@@ -29,9 +29,9 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
     });
   }
-  function catById(id) {
-    return CATEGORIES.filter(function (k) { return k.id === id; })[0];
-  }
+  var CAT_MAP = {};
+  CATEGORIES.forEach(function (c) { CAT_MAP[c.id] = c; });
+  function catById(id) { return CAT_MAP[id]; }
   function checkKey(caseId, idx) { return caseId + "#" + idx; }
   function caseDone(c) {
     return c.checks.every(function (_, i) { return checks[checkKey(c.id, i)]; });
@@ -84,6 +84,13 @@
     btn.addEventListener("click", function () { switchTab(btn.dataset.tab); });
   });
 
+  function gotoCategory(catId) {
+    activeCat = catId;
+    searchTerm = "";
+    $("#search").value = "";
+    renderCats(); renderCases(); switchTab("check");
+  }
+
   /* ───────── 탭0: 대시보드 ───────── */
   function renderDash() {
     // D-day
@@ -129,11 +136,7 @@
         '<span class="dc-num">' + r.p.done + "/" + r.p.total + "</span></div>";
     }).join("");
     document.querySelectorAll("#dash-cats [data-goto]").forEach(function (el) {
-      el.addEventListener("click", function () {
-        activeCat = el.dataset.goto;
-        searchTerm = ""; $("#search").value = "";
-        renderCats(); renderCases(); switchTab("check");
-      });
+      el.addEventListener("click", function () { gotoCategory(el.dataset.goto); });
     });
 
     // 추천 점검: 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
@@ -147,11 +150,7 @@
         }).join("")
       : '<li class="all-done">✔ 빈출 사례 점검을 모두 마쳤습니다. 분야별 점검을 이어가세요.</li>';
     document.querySelectorAll("#dash-todo li[data-goto]").forEach(function (el) {
-      el.addEventListener("click", function () {
-        activeCat = el.dataset.goto;
-        searchTerm = ""; $("#search").value = "";
-        renderCats(); renderCases(); switchTab("check");
-      });
+      el.addEventListener("click", function () { gotoCategory(el.dataset.goto); });
     });
   }
 
@@ -315,12 +314,18 @@
     });
   }
 
+  /* 엑셀 머리글 행("항목명/담당부서…")이 같이 복사된 경우 건너뛴다 */
+  function isHeaderRow(cols) {
+    return /^(연번|번호|순번|항목명?|수감자료\s*(항목|목록)?명?|자료명)$/.test((cols[0] || "").trim());
+  }
+
   $("#import-btn").addEventListener("click", function () {
     var lines = $("#paste-input").value.split(/\r?\n/);
     var added = 0;
     lines.forEach(function (line) {
       if (!line.trim()) return;
       var cols = line.split("\t");
+      if (isHeaderRow(cols)) return;
       board.push({
         name: (cols[0] || "").trim(),
         dept: (cols[1] || "").trim(),
@@ -388,6 +393,29 @@
     downloadFile(name, JSON.stringify(payload, null, 2), "application/json");
   });
 
+  /* 외부 파일(백업 JSON)은 손상·수정 가능성이 있으므로 형태를 강제한다 */
+  function sanitizeObject(obj) {
+    return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+  }
+  function sanitizeBoard(arr) {
+    return (Array.isArray(arr) ? arr : []).map(function (i) {
+      i = (i && typeof i === "object") ? i : {};
+      return {
+        name: String(i.name || ""),
+        dept: String(i.dept || ""),
+        owner: String(i.owner || ""),
+        status: STATUSES.indexOf(i.status) !== -1 ? i.status : "미시작"
+      };
+    }).filter(function (i) { return i.name; });
+  }
+  function sanitizeSettings(s) {
+    s = (s && typeof s === "object") ? s : {};
+    return {
+      school: String(s.school || ""),
+      auditDate: /^\d{4}-\d{2}-\d{2}$/.test(s.auditDate || "") ? s.auditDate : ""
+    };
+  }
+
   $("#restore-btn").addEventListener("click", function () { $("#restore-file").click(); });
   $("#restore-file").addEventListener("change", function () {
     var file = this.files[0];
@@ -402,11 +430,11 @@
         return;
       }
       if (!confirm("백업 파일로 현재 데이터를 덮어쓸까요?\n(내보낸 시점: " + (payload.exportedAt || "알 수 없음") + ")")) return;
-      checks   = payload.checks || {};
-      board    = Array.isArray(payload.board) ? payload.board : [];
-      naCases  = payload.na || {};
-      memos    = payload.memos || {};
-      settings = payload.settings || { school: "", auditDate: "" };
+      checks   = sanitizeObject(payload.checks);
+      board    = sanitizeBoard(payload.board);
+      naCases  = sanitizeObject(payload.na);
+      memos    = sanitizeObject(payload.memos);
+      settings = sanitizeSettings(payload.settings);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
       save(LS_MEMO, memos); save(LS_SETTINGS, settings);
       renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
@@ -416,10 +444,21 @@
   });
 
   /* ───────── 탭3: 통계·보고서 ───────── */
-  function dispositionGroup(d) {
+  /* data.js의 사례에 dispoGroup 필드가 있으면 그것을 쓰고,
+     없으면 처분 문구의 키워드로 분류한다(실데이터 입력 시 dispoGroup 권장) */
+  function dispositionGroup(c) {
+    if (c.dispoGroup) return c.dispoGroup;
+    var d = c.disposition || "";
     if (d.indexOf("회수") !== -1 || d.indexOf("시정") !== -1) return "시정·회수(금전)";
     if (d.indexOf("경고") !== -1) return "경고";
     return "주의 등";
+  }
+
+  function barRowHTML(name, n, max, unit) {
+    return '<div class="bar-row"><span class="bar-name">' + esc(name) + "</span>" +
+      '<span class="bar-track"><span class="bar-fill" style="display:block;width:' +
+      Math.round(n / (max || 1) * 100) + '%"></span></span>' +
+      '<span class="bar-num">' + n + (unit || "건") + "</span></div>";
   }
 
   function renderStats() {
@@ -431,28 +470,20 @@
     }).sort(function (a, b) { return b.n - a.n; });
     var maxN = counts[0] ? counts[0].n : 1;
     html += '<div class="status-card"><h4>분야별 지적사례 분포 (수록 ' + CASES.length + "건)</h4>";
-    counts.forEach(function (r) {
-      html += '<div class="bar-row"><span class="bar-name">' + esc(r.name) + "</span>" +
-        '<span class="bar-track"><span class="bar-fill" style="display:block;width:' + Math.round(r.n / maxN * 100) + '%"></span></span>' +
-        '<span class="bar-num">' + r.n + "건</span></div>";
-    });
+    counts.forEach(function (r) { html += barRowHTML(r.name, r.n, maxN); });
     html += "</div>";
 
     // 처분 유형 분포
     var groups = {};
     CASES.forEach(function (c) {
-      var g = dispositionGroup(c.disposition);
+      var g = dispositionGroup(c);
       groups[g] = (groups[g] || 0) + 1;
     });
     var gRows = Object.keys(groups).map(function (g) { return { name: g, n: groups[g] }; })
       .sort(function (a, b) { return b.n - a.n; });
     var gMax = gRows[0] ? gRows[0].n : 1;
     html += '<div class="status-card"><h4>처분 유형 분포 — 금전 처분(회수)이 걸린 분야가 우선 점검 대상</h4>';
-    gRows.forEach(function (r) {
-      html += '<div class="bar-row"><span class="bar-name">' + esc(r.name) + "</span>" +
-        '<span class="bar-track"><span class="bar-fill" style="display:block;width:' + Math.round(r.n / gMax * 100) + '%"></span></span>' +
-        '<span class="bar-num">' + r.n + "건</span></div>";
-    });
+    gRows.forEach(function (r) { html += barRowHTML(r.name, r.n, gMax); });
     html += "</div>";
 
     // 점검 진행률
@@ -510,7 +541,7 @@
       var naList = CASES.filter(function (c) { return c.cat === cat.id && naCases[c.id]; })
         .map(function (c) { return c.title; }).join(", ");
       html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
-        (p.total ? Math.round(p.done / p.total * 100) : 100) + "%</td><td class=\"na\">" + esc(naList || "-") + "</td></tr>";
+        (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td><td class=\"na\">" + esc(naList || "-") + "</td></tr>";
     });
     html += "</table>";
 
