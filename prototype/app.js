@@ -12,7 +12,20 @@
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
     catch (e) { return fallback; }
   }
-  function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+  /* 학교 PC 보안 설정으로 저장소가 차단된 경우에도 앱이 멈추지 않도록 한다
+     (저장만 안 되고 세션 내 사용은 가능 → 백업 파일 저장 안내) */
+  var storageBlocked = false;
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); }
+    catch (e) {
+      if (!storageBlocked) {
+        storageBlocked = true;
+        var meta = $("#meta-line");
+        if (meta) meta.textContent =
+          "⚠ 이 브라우저 설정에서는 자동 저장이 되지 않습니다. 종료 전 [통계·보고서]의 백업 파일 저장을 이용하세요.";
+      }
+    }
+  }
 
   var checks   = load(LS_CHECKS, {});
   var board    = load(LS_BOARD, []);
@@ -31,7 +44,8 @@
   }
   var CAT_MAP = {};
   CATEGORIES.forEach(function (c) { CAT_MAP[c.id] = c; });
-  function catById(id) { return CAT_MAP[id]; }
+  /* data.js 입력 실수(cat 오타)가 있어도 앱이 죽지 않고 원시 id를 표시 */
+  function catById(id) { return CAT_MAP[id] || { id: id, name: id, desc: "" }; }
   function checkKey(caseId, idx) { return caseId + "#" + idx; }
   function caseDone(c) {
     return c.checks.every(function (_, i) { return checks[checkKey(c.id, i)]; });
@@ -72,7 +86,9 @@
   /* ───────── 탭 전환 ───────── */
   function switchTab(name) {
     document.querySelectorAll(".tab").forEach(function (b) {
-      b.classList.toggle("active", b.dataset.tab === name);
+      var on = b.dataset.tab === name;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
     });
     document.querySelectorAll(".tab-panel").forEach(function (p) {
       p.classList.toggle("active", p.id === "tab-" + name);
@@ -91,6 +107,14 @@
     renderCats(); renderCases(); switchTab("check");
   }
 
+  /* 클릭과 키보드(Enter/Space) 모두에서 동작하도록 바인딩 */
+  function bindActivate(el, fn) {
+    el.addEventListener("click", fn);
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+    });
+  }
+
   /* ───────── 탭0: 대시보드 ───────── */
   function renderDash() {
     // D-day
@@ -106,7 +130,7 @@
         "감사 예정일 " + settings.auditDate;
     } else {
       dEl.textContent = "D-?";
-      dEl.className = "dday-big far";
+      dEl.className = "dday-big unset";
       dateEl.textContent = "학교명과 감사 예정일을 입력하세요";
     }
     $("#set-school").value = settings.school || "";
@@ -130,13 +154,13 @@
       return { cat: cat, p: p, pct: pct };
     }).sort(function (a, b) { return a.pct - b.pct; });
     $("#dash-cats").innerHTML = rows.map(function (r) {
-      return '<div class="dash-cat-row" data-goto="' + r.cat.id + '">' +
+      return '<div class="dash-cat-row" role="button" tabindex="0" data-goto="' + r.cat.id + '">' +
         '<span class="dc-name">' + esc(r.cat.name) + "</span>" +
         '<span class="dc-bar">' + progressBarHTML(r.pct) + "</span>" +
         '<span class="dc-num">' + r.p.done + "/" + r.p.total + "</span></div>";
     }).join("");
     document.querySelectorAll("#dash-cats [data-goto]").forEach(function (el) {
-      el.addEventListener("click", function () { gotoCategory(el.dataset.goto); });
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
 
     // 추천 점검: 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
@@ -145,12 +169,12 @@
     }).slice(0, 6);
     $("#dash-todo").innerHTML = todos.length
       ? todos.map(function (c) {
-          return '<li data-goto="' + c.cat + '">★ ' + esc(c.title) +
+          return '<li role="button" tabindex="0" data-goto="' + c.cat + '">★ ' + esc(c.title) +
             '<span class="todo-cat">' + esc(catById(c.cat).name) + "</span></li>";
         }).join("")
       : '<li class="all-done">✔ 빈출 사례 점검을 모두 마쳤습니다. 분야별 점검을 이어가세요.</li>';
     document.querySelectorAll("#dash-todo li[data-goto]").forEach(function (el) {
-      el.addEventListener("click", function () { gotoCategory(el.dataset.goto); });
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
   }
 
@@ -219,8 +243,8 @@
       html += "</div>" +
         '<div class="case-docs">' + esc(c.docs.join(", ")) + "</div>" +
         '<div class="case-foot">' +
-        '<span class="na-toggle" data-na="' + c.id + '">' + (isNA ? "↩ 점검 대상으로 되돌리기" : "해당없음(우리 학교 무관)") + "</span>" +
-        '<span class="memo-toggle' + (memo ? " has-memo" : "") + '" data-memo="' + c.id + '">✎ 메모' + (memo ? " 있음" : "") + "</span>" +
+        '<button type="button" class="link-btn na-toggle" data-na="' + c.id + '">' + (isNA ? "↩ 점검 대상으로 되돌리기" : "해당없음(우리 학교 무관)") + "</button>" +
+        '<button type="button" class="link-btn memo-toggle' + (memo ? " has-memo" : "") + '" data-memo="' + c.id + '">✎ 메모' + (memo ? " 있음" : "") + "</button>" +
         "</div>" +
         '<textarea class="case-memo" data-memo-input="' + c.id + '" placeholder="담당자 메모 (확인한 문서, 후임자에게 남길 말 등)" ' +
         (memo ? "" : "hidden ") + "rows=\"2\">" + esc(memo) + "</textarea>" +
@@ -326,20 +350,32 @@
       if (!line.trim()) return;
       var cols = line.split("\t");
       if (isHeaderRow(cols)) return;
+      var name = (cols[0] || "").trim();
+      if (!name) return; // 첫 칸이 빈 행(엑셀 빈 셀)은 건너뜀
       board.push({
-        name: (cols[0] || "").trim(),
+        name: name,
         dept: (cols[1] || "").trim(),
         owner: (cols[2] || "").trim(),
         status: "미시작"
       });
       added++;
     });
-    if (added) {
-      save(LS_BOARD, board);
-      $("#paste-input").value = "";
-      $("#paste-box").removeAttribute("open");
-      renderBoard();
+    if (!added) {
+      alert("가져올 항목을 찾지 못했습니다.\n항목명이 첫 번째 열에 오도록 붙여넣어 주세요.");
+      return;
     }
+    save(LS_BOARD, board);
+    $("#paste-input").value = "";
+    $("#paste-box").removeAttribute("open");
+    renderBoard();
+  });
+
+  $("#sample-btn").addEventListener("click", function () {
+    $("#paste-input").value =
+      "최근 3년 학교회계 세입세출 결산서\t행정실\t김○○\n" +
+      "학업성적관리위원회 회의록\t교무부\t이○○\n" +
+      "수의계약 체결 현황(최근 3년)\t행정실\t박○○";
+    $("#paste-box").setAttribute("open", "");
   });
 
   $("#board-clear").addEventListener("click", function () {
@@ -360,7 +396,12 @@
   }
   function downloadCSV(filename, rows) {
     var csv = "\uFEFF" + rows.map(function (r) {
-      return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(",");
+      return r.map(function (c) {
+        var s = String(c);
+        // \uC5D1\uC140 \uC218\uC2DD \uC8FC\uC785 \uBC29\uC9C0: =, +, -, @\uB85C \uC2DC\uC791\uD558\uB294 \uC140\uC740 \uBB38\uC790\uB85C \uAC15\uC81C
+        if (/^[=+\-@]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      }).join(",");
     }).join("\r\n");
     downloadFile(filename, csv, "text/csv;charset=utf-8;");
   }
@@ -535,7 +576,7 @@
 
     // 요약
     html += "<h2>점검 요약 — 전체 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
-      "<table><tr><th>분야</th><th>점검/전체</th><th>진행률</th><th>해당없음 처리 사례</th></tr>";
+      "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th><th>해당없음 처리 사례</th></tr></thead><tbody>";
     CATEGORIES.forEach(function (cat) {
       var p = catProgress(cat.id);
       var naList = CASES.filter(function (c) { return c.cat === cat.id && naCases[c.id]; })
@@ -543,14 +584,14 @@
       html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
         (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td><td class=\"na\">" + esc(naList || "-") + "</td></tr>";
     });
-    html += "</table>";
+    html += "</tbody></table>";
 
     // 분야별 상세
     CATEGORIES.forEach(function (cat) {
       var catCases = CASES.filter(function (c) { return c.cat === cat.id; });
       if (!catCases.length) return;
       html += "<h2>" + esc(cat.name) + "</h2>" +
-        "<table><tr><th style=\"width:28%\">지적사례 유형</th><th>점검 문항</th><th style=\"width:8%\">결과</th></tr>";
+        "<table><thead><tr><th style=\"width:28%\">지적사례 유형</th><th>점검 문항</th><th style=\"width:8%\">결과</th></tr></thead><tbody>";
       catCases.forEach(function (c) {
         var rowSpan = c.checks.length + (memos[c.id] ? 1 : 0);
         c.checks.forEach(function (q, i) {
@@ -565,21 +606,31 @@
           html += '<tr><td colspan="2" class="print-memo">✎ ' + esc(memos[c.id]) + "</td></tr>";
         }
       });
-      html += "</table>";
+      html += "</tbody></table>";
     });
 
     // 수감자료
     if (board.length) {
       var bp = boardProgress();
       html += "<h2>수감자료 준비 현황 (" + bp.done + "/" + bp.total + "건)</h2>" +
-        "<table><tr><th>항목</th><th>담당부서</th><th>담당자</th><th>상태</th></tr>";
+        "<table><thead><tr><th>항목</th><th>담당부서</th><th>담당자</th><th>상태</th></tr></thead><tbody>";
       board.forEach(function (i) {
         html += "<tr><td>" + esc(i.name) + "</td><td>" + esc(i.dept) + "</td><td>" + esc(i.owner) + "</td><td>" + esc(i.status) + "</td></tr>";
       });
-      html += "</table>";
+      html += "</tbody></table>";
     }
     $("#print-area").innerHTML = html;
     window.print();
+  });
+
+  /* ───────── 예시 데이터 안내 배너 ───────── */
+  var LS_BANNER = "gamsanavi.bannerClosed.v1";
+  try {
+    if (localStorage.getItem(LS_BANNER)) $("#seed-banner").style.display = "none";
+  } catch (e) { /* 저장소 차단 시 배너 유지 */ }
+  $("#banner-close").addEventListener("click", function () {
+    $("#seed-banner").style.display = "none";
+    try { localStorage.setItem(LS_BANNER, "1"); } catch (e) { /* 무시 */ }
   });
 
   /* ───────── 초기화 ───────── */

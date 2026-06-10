@@ -5,7 +5,7 @@ body {
   background: #f4f6f9; color: #222; font-size: 15px; line-height: 1.55;
 }
 main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-.muted { font-weight: 400; font-size: 12px; color: #889; }
+.muted { font-weight: 400; font-size: 12px; color: #667; }
 
 /* ── 헤더 ── */
 .app-header {
@@ -25,7 +25,22 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   max-width: 1100px; margin: 14px auto 0; padding: 10px 14px;
   background: #fff7e0; border: 1px solid #e7c45a; border-radius: 8px; font-size: 13px;
 }
-.banner code { background: #f0e6c8; padding: 1px 5px; border-radius: 4px; }
+.banner-close {
+  float: right; border: 1px solid #d8c98a; background: #fff; border-radius: 6px;
+  padding: 2px 9px; cursor: pointer; font-size: 12px; color: #6b5a1e;
+}
+
+.quickstart {
+  background: #e9f0fa; border: 1px solid #c3d4ec; border-radius: 8px;
+  padding: 9px 14px; font-size: 13.5px; color: #2a4467; margin-bottom: 12px;
+}
+
+.field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #556; }
+.field input { padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 14px; }
+
+.link-btn {
+  border: 0; background: none; padding: 0; font: inherit; font-size: 13px; cursor: pointer;
+}
 
 /* ── 탭 패널 ── */
 .tab-panel { display: none; padding-top: 14px; }
@@ -41,6 +56,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .dday-big { font-size: 44px; font-weight: 800; color: #b3261e; line-height: 1.1; }
 .dday-big.far { color: #1f6f3f; }
 .dday-big.mid { color: #b07b00; }
+.dday-big.unset { color: #99a; }
 .dday-date { font-size: 13px; color: #667; margin: 4px 0 12px; }
 .score-big { font-size: 44px; font-weight: 800; color: #1f3a5f; line-height: 1.1; }
 .score-detail { font-size: 13px; color: #667; margin-top: 10px; }
@@ -108,7 +124,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .case-docs::before { content: "확인 문서: "; font-weight: 700; }
 
 .case-foot { margin-top: 10px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
-.na-toggle { color: #889; cursor: pointer; user-select: none; }
+.na-toggle { color: #667; cursor: pointer; user-select: none; }
 .memo-toggle { color: #1f3a5f; cursor: pointer; user-select: none; }
 .memo-toggle.has-memo { font-weight: 700; }
 .case-memo {
@@ -159,7 +175,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .board-table tr.st-준비완료 td { background: #f0f9f2; }
 .board-table tr.st-해당없음 td { color: #999; }
 .del-btn { border: 0; background: none; color: #a33; cursor: pointer; font-size: 15px; }
-.empty { color: #888; text-align: center; padding: 30px 0; }
+.empty { color: #666; text-align: center; padding: 30px 0; }
 
 /* ── 통계·보고서 탭 ── */
 .status-actions { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
@@ -189,9 +205,12 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .print-only th, .print-only td { border: 1px solid #999; padding: 4px 7px; font-size: 11px; text-align: left; }
   .print-only th { background: #eee; }
   .print-meta { font-size: 11.5px; color: #444; text-align: center; margin-bottom: 14px; }
-  .sign-table { width: 50%; margin-left: auto; }
-  .sign-table th, .sign-table td { text-align: center; }
-  .sign-table td { height: 46px; }
+  .print-only .sign-table { width: 50%; margin-left: auto; }
+  .print-only .sign-table th, .print-only .sign-table td { text-align: center; }
+  .print-only .sign-table td { height: 46px; }
+  .print-only tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-only h2 { break-after: avoid; page-break-after: avoid; }
+  .print-only thead { display: table-header-group; }
   .ok { color: #1f6f3f; font-weight: 700; }
   .ng { color: #a33; font-weight: 700; }
   .na { color: #888; }
