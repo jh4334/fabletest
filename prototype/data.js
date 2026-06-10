@@ -45,7 +45,7 @@ const CASES = [
     docs: ["학업성적관리위원회 회의록", "평가계획서", "정보공시 자료"]
   },
   {
-    id: "gyomu-02", cat: "gyomu", verified: false,
+    id: "gyomu-02", cat: "gyomu", verified: false, freq: 3,
     title: "학교생활기록부 정정 절차 위반",
     detail: "객관적 증빙자료 없이 졸업생 학교생활기록부를 정정하거나, 정정대장 기재·결재 없이 정정한 사례.",
     disposition: "경고",
@@ -86,7 +86,7 @@ const CASES = [
 
   /* ---------------- 복무·출장 ---------------- */
   {
-    id: "bokmu-01", cat: "bokmu", verified: false,
+    id: "bokmu-01", cat: "bokmu", verified: false, freq: 3,
     title: "출장 시간과 초과근무수당 중복 지급",
     detail: "관외 출장 시간과 초과근무 인정 시간이 겹치는데도 초과근무수당을 함께 지급받은 사례. 회수 조치가 빈번한 대표 유형.",
     disposition: "회수·주의",
@@ -127,7 +127,7 @@ const CASES = [
 
   /* ---------------- 수당·강사료 ---------------- */
   {
-    id: "sudang-01", cat: "sudang", verified: false,
+    id: "sudang-01", cat: "sudang", verified: false, freq: 3,
     title: "외부강사료 원천징수 세목 오적용",
     detail: "일시·우발적 강의(기타소득)와 계속·반복적 강의(사업소득)의 구분을 잘못 적용하여 원천징수를 과소·과다하게 한 사례.",
     disposition: "시정(추징·환급)",
@@ -168,7 +168,7 @@ const CASES = [
 
   /* ---------------- 계약·물품 ---------------- */
   {
-    id: "gyeyak-01", cat: "gyeyak", verified: false,
+    id: "gyeyak-01", cat: "gyeyak", verified: false, freq: 3,
     title: "분할 수의계약(쪼개기 계약)",
     detail: "동일 목적·동일 업체 계약을 수의계약 한도 이하로 분할하여 체결한 사례. 계약 분야 최빈출 유형.",
     disposition: "경고",
@@ -208,7 +208,7 @@ const CASES = [
 
   /* ---------------- 현장체험학습·수학여행 ---------------- */
   {
-    id: "chehum-01", cat: "chehum", verified: false,
+    id: "chehum-01", cat: "chehum", verified: false, freq: 3,
     title: "수익자부담경비 정산 잔액 미반환",
     detail: "현장체험학습·수학여행 경비 정산 후 잔액을 학부모에게 반환하지 않거나 정산 자체를 누락한 사례.",
     disposition: "시정(반환)·주의",
@@ -249,7 +249,7 @@ const CASES = [
 
   /* ---------------- 학교회계·예산 ---------------- */
   {
-    id: "hoegye-01", cat: "hoegye", verified: false,
+    id: "hoegye-01", cat: "hoegye", verified: false, freq: 3,
     title: "세입 조치 누락",
     detail: "시설 사용료, 통장 이자, 폐품 매각 대금 등을 학교회계 세입으로 조치하지 않은 사례.",
     disposition: "시정(세입조치)",
@@ -303,7 +303,7 @@ const CASES = [
     docs: ["모집 공고문·심사 자료", "전력 조회 회신서", "위촉 계약서"]
   },
   {
-    id: "bangkwa-02", cat: "bangkwa", verified: false,
+    id: "bangkwa-02", cat: "bangkwa", verified: false, freq: 3,
     title: "방과후 수강료 정산 부적정",
     detail: "폐강·결강 시 수강료를 환불하지 않거나, 출석부와 강사료 지급 시수가 불일치한 사례.",
     disposition: "시정(환불·회수)",
@@ -345,7 +345,7 @@ const CASES = [
 
   /* ---------------- 개인정보·정보화 ---------------- */
   {
-    id: "jeongbo-01", cat: "jeongbo", verified: false,
+    id: "jeongbo-01", cat: "jeongbo", verified: false, freq: 3,
     title: "보유기간 경과 개인정보 미파기",
     detail: "졸업생·전출생의 개인정보 파일(상담자료, 동의서 등)을 보유기간 경과 후에도 파기하지 않고 보관한 사례.",
     disposition: "주의",
