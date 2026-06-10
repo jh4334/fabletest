@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>감사내비 — 엑셀 → data.js 변환 도구</title>
+<style>
+  body { font-family: "Malgun Gothic", "맑은 고딕", sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 16px; color: #222; font-size: 14px; line-height: 1.6; }
+  h1 { font-size: 20px; color: #1f3a5f; }
+  h2 { font-size: 15px; color: #1f3a5f; margin-top: 22px; }
+  textarea { width: 100%; font-size: 12.5px; border: 1px solid #c6cedb; border-radius: 8px; padding: 10px; box-sizing: border-box; font-family: Consolas, monospace; }
+  button { padding: 9px 18px; border: 1px solid #1f3a5f; background: #1f3a5f; color: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; margin: 10px 6px 10px 0; }
+  button.ghost { background: #fff; color: #1f3a5f; }
+  table { border-collapse: collapse; font-size: 12.5px; margin: 8px 0; }
+  th, td { border: 1px solid #ccd; padding: 4px 8px; text-align: left; }
+  th { background: #eef2f8; }
+  .err { color: #a33; white-space: pre-wrap; font-size: 13px; }
+  .ok { color: #1f6f3f; }
+  code { background: #f0f3f8; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>엑셀 → data.js 변환 도구</h1>
+<p>열린감사방 처분서를 읽고 <b>엑셀에서 사례를 코딩</b>한 뒤, 표를 복사해 아래에 붙여넣으면
+감사내비 <code>data.js</code>의 <code>CASES</code> 배열 코드를 만들어 줍니다. 프로그램 지식이 없어도 됩니다.</p>
+
+<h2>1. 엑셀 열 순서 (1행은 머리글, 그대로 복사)</h2>
+<table>
+  <tr><th>열</th><th>내용</th><th>예시</th></tr>
+  <tr><td>A 분야</td><td>분야 id 또는 이름</td><td><code>bokmu</code> 또는 <code>복무·출장</code></td></tr>
+  <tr><td>B 제목</td><td>지적사례 제목</td><td>출장 중 초과근무수당 중복 지급</td></tr>
+  <tr><td>C 내용</td><td>유형화한 위반 내용(기관·개인 식별 제거)</td><td>관외 출장 시간과 초과근무 인정 시간이 겹치는데도…</td></tr>
+  <tr><td>D 처분</td><td>처분 문구</td><td>회수·주의</td></tr>
+  <tr><td>E 근거</td><td>근거 법령·지침</td><td>공무원수당 등에 관한 규정</td></tr>
+  <tr><td>F 점검문항</td><td>자가점검 문항, <b>세미콜론(;)으로 구분</b></td><td>출장과 초과근무 시간 겹침 대조했는가; 사후 등록 건 없는가</td></tr>
+  <tr><td>G 확인문서</td><td>확인할 문서, <b>세미콜론(;)으로 구분</b></td><td>출장명령부; 초과근무 실적</td></tr>
+  <tr><td>H 빈출</td><td>빈출 여부 <code>O</code>/<code>X</code></td><td>O</td></tr>
+  <tr><td>I 확인</td><td>처분서 원문 확인 완료 <code>O</code>/<code>X</code></td><td>O</td></tr>
+</table>
+<p>분야 id: <span id="cat-help"></span></p>
+
+<h2>2. 엑셀에서 복사한 표 붙여넣기</h2>
+<textarea id="input" rows="10" placeholder="엑셀에서 데이터 영역을 복사(Ctrl+C)해서 여기에 붙여넣기(Ctrl+V) 하세요. 머리글 행이 섞여 있어도 자동으로 건너뜁니다."></textarea>
+<div>
+  <button id="convert">변환하기</button>
+  <button id="copy" class="ghost">결과 복사</button>
+</div>
+<p id="status"></p>
+
+<h2>3. 결과 — data.js의 <code>const CASES = [ ... ];</code> 자리에 붙여넣기</h2>
+<textarea id="output" rows="16" readonly placeholder="변환 결과가 여기에 표시됩니다."></textarea>
+
+<script>
+/* 감사내비 data.js와 동일한 분야 목록 (분야 추가 시 여기와 data.js 둘 다 갱신) */
+var CATEGORIES = [
+  { id: "gyomu",   name: "교무·학사" },
+  { id: "bokmu",   name: "복무·출장" },
+  { id: "sudang",  name: "수당·강사료" },
+  { id: "gyeyak",  name: "계약·물품" },
+  { id: "chehum",  name: "현장체험학습·수학여행" },
+  { id: "hoegye",  name: "학교회계·예산" },
+  { id: "bangkwa", name: "방과후학교·돌봄" },
+  { id: "geupsik", name: "급식" },
+  { id: "jeongbo", name: "개인정보·정보화" },
+  { id: "sisul",   name: "시설·안전" }
+];
+document.getElementById("cat-help").textContent =
+  CATEGORIES.map(function (c) { return c.id + "(" + c.name + ")"; }).join(", ");
+
+function findCat(s) {
+  s = (s || "").trim();
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    if (CATEGORIES[i].id === s || CATEGORIES[i].name === s ||
+        CATEGORIES[i].name.replace(/·.*/, "") === s) return CATEGORIES[i].id;
+  }
+  return null;
+}
+function jstr(s) { return JSON.stringify(String(s || "").trim()); }
+function jarr(s) {
+  var items = String(s || "").split(";").map(function (x) { return x.trim(); }).filter(Boolean);
+  return "[" + items.map(function (x) { return JSON.stringify(x); }).join(", ") + "]";
+}
+function isYes(s) { return /^(o|O|ㅇ|예|y|Y|true|1)$/.test((s || "").trim()); }
+
+document.getElementById("convert").addEventListener("click", function () {
+  var lines = document.getElementById("input").value.split(/\r?\n/);
+  var out = [], errs = [], seq = {}, count = 0;
+  lines.forEach(function (line, ln) {
+    if (!line.trim()) return;
+    var c = line.split("\t");
+    var first = (c[0] || "").trim();
+    if (/^(분야|연번|번호|순번)$/.test(first)) return; // 머리글 스킵
+    var cat = findCat(first);
+    if (!cat) { errs.push((ln + 1) + "행: 분야를 알 수 없음 → \"" + first + "\""); return; }
+    if (!(c[1] || "").trim()) { errs.push((ln + 1) + "행: 제목(B열)이 비어 있음"); return; }
+    if (!(c[5] || "").trim()) { errs.push((ln + 1) + "행: 점검문항(F열)이 비어 있음"); return; }
+    seq[cat] = (seq[cat] || 0) + 1;
+    var id = cat + "-" + String(seq[cat] + 100).slice(1); // 01, 02…
+    out.push(
+      "  {\n" +
+      '    id: "' + id + '", cat: "' + cat + '", verified: ' + (isYes(c[8]) ? "true" : "false") +
+      (isYes(c[7]) ? ", freq: 3" : "") + ",\n" +
+      "    title: " + jstr(c[1]) + ",\n" +
+      "    detail: " + jstr(c[2]) + ",\n" +
+      "    disposition: " + jstr(c[3]) + ",\n" +
+      "    basis: " + jstr(c[4]) + ",\n" +
+      "    checks: " + jarr(c[5]) + ",\n" +
+      "    docs: " + jarr(c[6]) + "\n" +
+      "  }");
+    count++;
+  });
+  document.getElementById("output").value =
+    count ? "const CASES = [\n" + out.join(",\n") + "\n];\n" : "";
+  var st = document.getElementById("status");
+  st.innerHTML = '<span class="ok">' + count + "건 변환됨.</span>" +
+    (errs.length ? '<br><span class="err">건너뛴 행:\n' + errs.join("\n") + "</span>" : "");
+});
+
+document.getElementById("copy").addEventListener("click", function () {
+  var ta = document.getElementById("output");
+  ta.select();
+  document.execCommand("copy");
+});
+</script>
+</body>
+</html>
