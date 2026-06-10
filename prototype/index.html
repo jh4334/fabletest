@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>감사내비 — 학교 종합감사 사전 자체점검 (충북)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header no-print">
+  <div class="brand">
+    <h1>감사내비</h1>
+    <p class="subtitle">학교 종합감사 사전 자체점검 · 충청북도교육청 기준</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="check">분야별 자체점검</button>
+    <button class="tab" data-tab="board">수감자료 준비 보드</button>
+    <button class="tab" data-tab="status">진행 현황</button>
+  </nav>
+</header>
+
+<div id="seed-banner" class="banner no-print">
+  ⚠ <b>예시 데이터 안내</b> — 현재 사례는 대표 지적 유형으로 구성된 시드 데이터입니다.
+  충북교육청 누리집 <b>열린감사방</b>의 감사결과 처분서·감사사례집을 분석해
+  <code>data.js</code>를 실제 사례로 교체한 뒤 활용하세요.
+</div>
+
+<main>
+  <!-- ━━━ 탭 1: 분야별 자체점검 ━━━ -->
+  <section id="tab-check" class="tab-panel active">
+    <div class="layout">
+      <aside class="sidebar no-print">
+        <input type="search" id="search" placeholder="사례·규정 검색 (예: 초과근무, 수의계약)">
+        <ul id="cat-list" class="cat-list"></ul>
+      </aside>
+      <div id="case-area" class="case-area"></div>
+    </div>
+  </section>
+
+  <!-- ━━━ 탭 2: 수감자료 준비 보드 ━━━ -->
+  <section id="tab-board" class="tab-panel">
+    <div class="board-tools no-print">
+      <details id="paste-box">
+        <summary>＋ 수감자료 목록 붙여넣기 (엑셀에서 복사 → 붙여넣기)</summary>
+        <p class="hint">엑셀에서 <b>항목명 | 담당부서 | 담당자</b> 열을 복사해 아래에 붙여넣고 [가져오기]를 누르세요. 항목명만 있어도 됩니다.</p>
+        <textarea id="paste-input" rows="6" placeholder="예)&#10;최근 3년 학교회계 세입세출 결산서&#9;행정실&#9;김○○&#10;학업성적관리위원회 회의록&#9;교무부&#9;이○○"></textarea>
+        <div class="row">
+          <button id="import-btn" class="btn primary">가져오기</button>
+          <button id="board-clear" class="btn danger">전체 삭제</button>
+        </div>
+      </details>
+      <div class="row board-filter">
+        <select id="board-status-filter">
+          <option value="">전체 상태</option>
+          <option>미시작</option><option>진행중</option><option>준비완료</option><option>해당없음</option>
+        </select>
+        <input type="search" id="board-search" placeholder="항목·담당자 검색">
+        <button id="board-csv" class="btn">CSV 내보내기</button>
+      </div>
+    </div>
+    <div id="board-progress" class="progress-wrap"></div>
+    <table class="board-table" id="board-table">
+      <thead><tr><th style="width:44%">수감자료 항목</th><th>담당부서</th><th>담당자</th><th>상태</th><th class="no-print"></th></tr></thead>
+      <tbody id="board-body"></tbody>
+    </table>
+    <p id="board-empty" class="empty">아직 등록된 수감자료가 없습니다. 감사 공문의 수감자료 목록을 붙여넣어 시작하세요.</p>
+  </section>
+
+  <!-- ━━━ 탭 3: 진행 현황 ━━━ -->
+  <section id="tab-status" class="tab-panel">
+    <div class="status-actions no-print">
+      <button id="print-report" class="btn primary">점검 결과표 인쇄 / PDF 저장</button>
+      <button id="check-csv" class="btn">점검 결과 CSV 내보내기</button>
+      <button id="reset-checks" class="btn danger">점검 초기화</button>
+    </div>
+    <div id="status-area"></div>
+  </section>
+</main>
+
+<!-- 인쇄 전용 보고서 -->
+<div id="print-area" class="print-only"></div>
+
+<footer class="app-footer no-print">
+  <span id="meta-line"></span>
+  <span>데이터는 이 PC 브라우저에만 저장됩니다(서버 전송 없음)</span>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
