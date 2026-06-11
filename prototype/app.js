@@ -7,6 +7,7 @@
   var LS_NA       = "gamsanavi.na.v1";        // { caseId: true }  해당없음 처리
   var LS_MEMO     = "gamsanavi.memo.v1";      // { caseId: "메모" }
   var LS_SETTINGS = "gamsanavi.settings.v1";  // { school, auditDate }
+  var LS_METRICS  = "gamsanavi.metrics.v1";   // 사용 효과 측정용
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -32,8 +33,57 @@
   var naCases  = load(LS_NA, {});
   var memos    = load(LS_MEMO, {});
   var settings = load(LS_SETTINGS, { school: "", auditDate: "" });
+  var metrics  = load(LS_METRICS, {
+    firstActAt: null,   // 최초 점검 시각(ISO)
+    lastActAt: null,    // 마지막 활동 시각(ms)
+    activeMs: 0,        // 누적 점검 시간(ms) — 활동 간격이 길면 휴지로 보고 제외
+    startPct: null,     // 최초 점검 시점의 종합 준비도(%)
+    snapshots: []       // [{ at: ISO, pct: 종합 준비도% }] 준비도 변화 추이
+  });
   var activeCat = CATEGORIES[0].id;
   var searchTerm = "";
+
+  /* ───────── 사용 효과 측정 (연구 효과성 검증용) ───────── */
+  var ACTIVE_GAP_MS = 10 * 60 * 1000; // 10분 이상 비활동이면 다른 세션으로 보고 시간 미합산
+  function recordActivity() {
+    var now = Date.now();
+    if (!metrics.firstActAt) {
+      metrics.firstActAt = new Date(now).toISOString();
+      metrics.startPct = overallPct();
+    }
+    if (metrics.lastActAt) {
+      var gap = now - metrics.lastActAt;
+      if (gap > 0 && gap < ACTIVE_GAP_MS) metrics.activeMs += gap;
+    }
+    metrics.lastActAt = now;
+    snapshotReadiness(now);
+    save(LS_METRICS, metrics);
+  }
+  /* 종합 준비도가 바뀔 때만 스냅샷을 남겨 추이 그래프를 만든다 */
+  function snapshotReadiness(now) {
+    var pct = overallPct();
+    var last = metrics.snapshots[metrics.snapshots.length - 1];
+    if (!last || last.pct !== pct) {
+      metrics.snapshots.push({ at: new Date(now).toISOString(), pct: pct });
+      if (metrics.snapshots.length > 500) metrics.snapshots.shift();
+    }
+  }
+  function overallPct() {
+    var cp = totalProgress(), bp = boardProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+    var boardPct = bp.total ? Math.round(bp.done / bp.total * 100) : null;
+    return boardPct === null ? checkPct : Math.round((checkPct + boardPct) / 2);
+  }
+  function fmtDuration(ms) {
+    var min = Math.round(ms / 60000);
+    if (min < 60) return min + "분";
+    return Math.floor(min / 60) + "시간 " + (min % 60) + "분";
+  }
+  function daysBetween(isoA, isoB) {
+    var a = new Date(isoA), b = new Date(isoB);
+    a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+    return Math.round((b - a) / 86400000) + 1; // 시작일 포함
+  }
 
   /* ───────── 공통 유틸 ───────── */
   function $(sel) { return document.querySelector(sel); }
@@ -279,6 +329,7 @@
         if (box.checked) checks[box.dataset.key] = true;
         else delete checks[box.dataset.key];
         save(LS_CHECKS, checks);
+        recordActivity();
         box.parentElement.classList.toggle("done", box.checked);
         renderCats();
       });
@@ -293,6 +344,7 @@
           else naCases[c.id] = true;
         });
         save(LS_NA, naCases);
+        recordActivity();
         renderCats(); renderCases();
       });
     }
@@ -302,6 +354,7 @@
         if (naCases[id]) delete naCases[id];
         else naCases[id] = true;
         save(LS_NA, naCases);
+        recordActivity();
         renderCats(); renderCases();
       });
     });
@@ -362,7 +415,7 @@
     document.querySelectorAll("#board-body select").forEach(function (sel) {
       sel.addEventListener("change", function () {
         board[+sel.dataset.idx].status = sel.value;
-        save(LS_BOARD, board); renderBoard();
+        save(LS_BOARD, board); recordActivity(); renderBoard();
       });
     });
     document.querySelectorAll("#board-body .del-btn").forEach(function (btn) {
@@ -501,8 +554,9 @@
 
   $("#backup-btn").addEventListener("click", function () {
     var payload = {
-      app: "gamsanavi", version: 2, exportedAt: new Date().toISOString(),
-      settings: settings, checks: checks, board: board, na: naCases, memos: memos
+      app: "gamsanavi", version: 3, exportedAt: new Date().toISOString(),
+      settings: settings, checks: checks, board: board, na: naCases, memos: memos,
+      metrics: metrics
     };
     var name = "감사내비_백업_" + new Date().toISOString().slice(0, 10) + ".json";
     downloadFile(name, JSON.stringify(payload, null, 2), "application/json");
@@ -530,6 +584,20 @@
       auditDate: /^\d{4}-\d{2}-\d{2}$/.test(s.auditDate || "") ? s.auditDate : ""
     };
   }
+  function sanitizeMetrics(m) {
+    var def = { firstActAt: null, lastActAt: null, activeMs: 0, startPct: null, snapshots: [] };
+    if (!m || typeof m !== "object") return def;
+    var snaps = Array.isArray(m.snapshots) ? m.snapshots.filter(function (s) {
+      return s && typeof s.at === "string" && typeof s.pct === "number";
+    }).map(function (s) { return { at: s.at, pct: s.pct }; }) : [];
+    return {
+      firstActAt: typeof m.firstActAt === "string" ? m.firstActAt : null,
+      lastActAt: typeof m.lastActAt === "number" ? m.lastActAt : null,
+      activeMs: typeof m.activeMs === "number" && m.activeMs >= 0 ? m.activeMs : 0,
+      startPct: typeof m.startPct === "number" ? m.startPct : null,
+      snapshots: snaps
+    };
+  }
 
   $("#restore-btn").addEventListener("click", function () { $("#restore-file").click(); });
   $("#restore-file").addEventListener("change", function () {
@@ -550,8 +618,9 @@
       naCases  = sanitizeObject(payload.na);
       memos    = sanitizeObject(payload.memos);
       settings = sanitizeSettings(payload.settings);
+      metrics  = sanitizeMetrics(payload.metrics);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
-      save(LS_MEMO, memos); save(LS_SETTINGS, settings);
+      save(LS_MEMO, memos); save(LS_SETTINGS, settings); save(LS_METRICS, metrics);
       renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
       alert("복원이 완료되었습니다.");
     };
@@ -576,8 +645,82 @@
       '<span class="bar-num">' + n + (unit || "건") + "</span></div>";
   }
 
+  /* ① 분야×유형 지적사례 빈도 집계 (연구 근거자료) */
+  function freqByCategory() {
+    return CATEGORIES.map(function (cat) {
+      var topics = CASES.filter(function (c) { return c.cat === cat.id && (c.freq || 0) > 0; })
+        .map(function (c) { return { title: c.title, freq: c.freq || 0 }; })
+        .sort(function (a, b) { return b.freq - a.freq; });
+      var total = topics.reduce(function (s, t) { return s + t.freq; }, 0);
+      return { name: cat.name, topics: topics, total: total };
+    }).filter(function (r) { return r.total > 0; })
+      .sort(function (a, b) { return b.total - a.total; });
+  }
+  function freqGrandTotal() {
+    return CASES.reduce(function (s, c) { return s + (c.freq || 0); }, 0);
+  }
+
+  /* ② 사용 효과 측정 요약 */
+  function effectSummary() {
+    var now = overallPct();
+    var hasData = !!metrics.firstActAt;
+    var days = hasData ? daysBetween(metrics.firstActAt, new Date().toISOString()) : 0;
+    return {
+      hasData: hasData,
+      firstActAt: metrics.firstActAt,
+      days: days,
+      activeMin: Math.round(metrics.activeMs / 60000),
+      activeStr: fmtDuration(metrics.activeMs),
+      startPct: metrics.startPct == null ? 0 : metrics.startPct,
+      nowPct: now,
+      snapshots: metrics.snapshots
+    };
+  }
+  /* 준비도 추이 스파크라인(SVG) — 외부 라이브러리 없이 인라인 생성 */
+  function sparklineSVG(snaps, w, h) {
+    if (!snaps || snaps.length < 2) return "";
+    var t0 = new Date(snaps[0].at).getTime();
+    var t1 = new Date(snaps[snaps.length - 1].at).getTime();
+    var span = (t1 - t0) || 1;
+    var pad = 4;
+    var pts = snaps.map(function (s) {
+      var x = pad + (new Date(s.at).getTime() - t0) / span * (w - 2 * pad);
+      var y = h - pad - (s.pct / 100) * (h - 2 * pad);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    });
+    return '<svg class="sparkline" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h +
+      '" preserveAspectRatio="none" role="img" aria-label="준비도 추이">' +
+      '<polyline fill="none" stroke="#1f6f3f" stroke-width="2" points="' + pts.join(" ") + '"/>' +
+      '<circle cx="' + pts[pts.length - 1].split(",")[0] + '" cy="' + pts[pts.length - 1].split(",")[1] +
+      '" r="3" fill="#1f6f3f"/></svg>';
+  }
+  function effectCardHTML() {
+    var e = effectSummary();
+    var html = '<div class="status-card effect-card"><h4>사용 효과 측정 <span class="muted">— 연구 효과성 검증용</span></h4>';
+    if (!e.hasData) {
+      html += '<p class="empty">아직 점검 기록이 없습니다. [분야별 자체점검]에서 점검을 시작하면 ' +
+        '점검 시작일·누적 점검 시간·준비도 변화가 자동으로 측정됩니다.</p></div>';
+      return html;
+    }
+    var gain = e.nowPct - e.startPct;
+    html += '<div class="effect-nums">' +
+      '<div class="effect-stat"><span class="es-num">' + e.days + '</span><span class="es-lbl">점검 진행 일수</span></div>' +
+      '<div class="effect-stat"><span class="es-num">' + e.activeStr + '</span><span class="es-lbl">누적 점검 시간</span></div>' +
+      '<div class="effect-stat"><span class="es-num">' + e.startPct + '<small>%</small> → ' + e.nowPct + '<small>%</small></span>' +
+      '<span class="es-lbl">준비도 변화 ' + (gain >= 0 ? "▲" + gain : "▼" + (-gain)) + 'p</span></div>' +
+      "</div>";
+    var spark = sparklineSVG(e.snapshots, 320, 56);
+    if (spark) html += '<div class="spark-wrap">' + spark + '<div class="spark-axis"><span>점검 시작</span><span>현재</span></div></div>';
+    html += '<button type="button" class="link-btn" id="metrics-reset">측정 기록 초기화</button>';
+    html += "</div>";
+    return html;
+  }
+
   function renderStats() {
     var html = '<div class="status-grid">';
+
+    // ② 사용 효과 측정 (가장 위 — 연구 효과성 지표)
+    html += effectCardHTML();
 
     // 분야별 사례 분포 (데이터 분석 관점)
     var counts = CATEGORIES.map(function (cat) {
@@ -636,8 +779,38 @@
     } else {
       html += '<p class="empty">수감자료 목록이 비어 있습니다.</p>';
     }
-    html += "</div></div>";
+    html += "</div>";
+
+    // ① 분야×유형 지적 빈도 집계표 (연구 근거자료 — 펼치기)
+    var fc = freqByCategory();
+    if (fc.length) {
+      html += '<div class="status-card status-wide"><h4>지적사례 빈도 집계표 ' +
+        '<span class="muted">— 2025년 자체감사 사례집 수록 기준 (총 ' + freqGrandTotal() + '건)</span></h4>' +
+        '<details class="freq-detail"><summary>분야·유형별 빈도 펼쳐 보기</summary>' +
+        '<table class="freq-table"><thead><tr><th>분야</th><th>지적 유형</th><th class="num">건수</th></tr></thead><tbody>';
+      fc.forEach(function (r) {
+        r.topics.forEach(function (t, i) {
+          html += "<tr>" +
+            (i === 0 ? '<td rowspan="' + r.topics.length + '" class="fc-cat">' + esc(r.name) +
+              '<span class="fc-total">소계 ' + r.total + "</span></td>" : "") +
+            "<td>" + esc(t.title) + (t.freq >= 3 ? ' <span class="freq-star">★</span>' : "") +
+            '</td><td class="num">' + t.freq + "</td></tr>";
+        });
+      });
+      html += '<tr class="freq-grand"><td colspan="2">합계</td><td class="num">' + freqGrandTotal() + "</td></tr>";
+      html += "</tbody></table></details></div>";
+    }
+
+    html += "</div>";
     $("#status-area").innerHTML = html;
+
+    var mr = document.getElementById("metrics-reset");
+    if (mr) mr.addEventListener("click", function () {
+      if (!confirm("사용 효과 측정 기록(점검 시간·준비도 추이)을 초기화할까요?\n점검 체크 내용은 그대로 유지됩니다.")) return;
+      metrics = { firstActAt: null, lastActAt: null, activeMs: 0, startPct: null, snapshots: [] };
+      save(LS_METRICS, metrics);
+      renderStats();
+    });
   }
 
   $("#reset-checks").addEventListener("click", function () {
@@ -661,6 +834,16 @@
       " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
       '<table class="sign-table"><tr><th>담당</th><th>교감</th><th>교장</th></tr>' +
       "<tr><td></td><td></td><td></td></tr></table>";
+
+    // 사용 효과 요약 (연구 효과성 근거) — 측정 기록이 있을 때만
+    var e = effectSummary();
+    if (e.hasData) {
+      var gain = e.nowPct - e.startPct;
+      html += '<p class="print-effect">▶ 사전 점검 효과: 점검 시작 ' +
+        new Date(e.firstActAt).toLocaleDateString("ko-KR") + " 이후 " + e.days + "일간, 누적 점검 시간 " +
+        e.activeStr + ", 종합 준비도 " + e.startPct + "% → " + e.nowPct + "%(" +
+        (gain >= 0 ? "+" + gain : gain) + "p)</p>";
+    }
 
     // 요약
     html += "<h2>점검 요약 — 전체 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
@@ -707,6 +890,23 @@
       });
       html += "</tbody></table>";
     }
+
+    // 지적사례 빈도 집계표 (연구 근거자료)
+    var fc = freqByCategory();
+    if (fc.length) {
+      html += "<h2>[붙임] 지적사례 빈도 집계표 — 2025년 자체감사 사례집 수록 기준 (총 " + freqGrandTotal() + "건)</h2>" +
+        '<table class="print-freq"><thead><tr><th style="width:22%">분야</th><th>지적 유형</th><th style="width:10%">건수</th></tr></thead><tbody>';
+      fc.forEach(function (r) {
+        r.topics.forEach(function (t, i) {
+          html += "<tr>" +
+            (i === 0 ? '<td rowspan="' + r.topics.length + '">' + esc(r.name) + " (소계 " + r.total + ")</td>" : "") +
+            "<td>" + esc(t.title) + (t.freq >= 3 ? " ★" : "") + '</td><td class="num">' + t.freq + "</td></tr>";
+        });
+      });
+      html += '<tr class="freq-grand"><td colspan="2">합계</td><td class="num">' + freqGrandTotal() + "</td></tr>";
+      html += "</tbody></table>";
+    }
+
     $("#print-area").innerHTML = html;
     window.print();
   });
