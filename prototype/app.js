@@ -99,6 +99,7 @@
   document.querySelectorAll(".tab").forEach(function (btn) {
     btn.addEventListener("click", function () { switchTab(btn.dataset.tab); });
   });
+  bindActivate($("#home-btn"), function () { switchTab("dash"); });
 
   function gotoCategory(catId) {
     activeCat = catId;
@@ -370,6 +371,17 @@
     renderBoard();
   });
 
+  $("#template-btn").addEventListener("click", function () {
+    downloadCSV("수감자료목록_양식.csv", [
+      ["수감자료 항목", "담당부서", "담당자"],
+      ["최근 3년 학교회계 세입세출 결산서", "행정실", "김○○"],
+      ["학업성적관리위원회 회의록", "교무부", "이○○"],
+      ["수의계약 체결 현황(최근 3년)", "행정실", "박○○"]
+    ]);
+    alert("양식 파일(수감자료목록_양식.csv)이 내려받기 되었습니다.\n" +
+      "엑셀에서 열어 작성한 뒤, 데이터 영역을 복사해 이 붙여넣기 칸에 붙여넣으세요.");
+  });
+
   $("#sample-btn").addEventListener("click", function () {
     $("#paste-input").value =
       "최근 3년 학교회계 세입세출 결산서\t행정실\t김○○\n" +
@@ -391,7 +403,9 @@
     var a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([content], { type: mime }));
     a.download = filename;
+    document.body.appendChild(a); // 일부 브라우저는 DOM 밖 앵커의 download 속성을 무시함
     a.click();
+    document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   }
   function downloadCSV(filename, rows) {

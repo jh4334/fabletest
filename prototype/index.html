@@ -10,7 +10,7 @@
 
 <header class="app-header no-print">
   <div class="brand">
-    <h1>🧭 감사내비</h1>
+    <h1 id="home-btn" role="button" tabindex="0" title="대시보드로 이동">🧭 감사내비</h1>
     <p class="subtitle">학교 종합감사 사전 자체점검 · 충청북도교육청 기준</p>
   </div>
   <nav class="tabs" role="tablist">
@@ -74,10 +74,12 @@
     <div class="board-tools no-print">
       <details id="paste-box">
         <summary>＋ 수감자료 목록 붙여넣기 (엑셀에서 복사 → 붙여넣기)</summary>
-        <p class="hint">엑셀에서 <b>항목명 | 담당부서 | 담당자</b> 열을 복사해 아래에 붙여넣고 [가져오기]를 누르세요. 항목명만 있어도 됩니다.</p>
+        <p class="hint">엑셀에서 <b>항목명 | 담당부서 | 담당자</b> 열을 복사해 아래에 붙여넣고 [가져오기]를 누르세요. 항목명만 있어도 됩니다.
+        처음이라면 <b>[엑셀 양식 내려받기]</b>로 양식 파일을 받아 작성한 뒤 복사해 오세요.</p>
         <textarea id="paste-input" rows="6" placeholder="예)&#10;최근 3년 학교회계 세입세출 결산서&#9;행정실&#9;김○○&#10;학업성적관리위원회 회의록&#9;교무부&#9;이○○"></textarea>
         <div class="row">
           <button id="import-btn" class="btn primary">가져오기</button>
+          <button id="template-btn" class="btn">엑셀 양식 내려받기</button>
           <button id="sample-btn" class="btn">예시 목록으로 체험</button>
           <button id="board-clear" class="btn danger">전체 삭제</button>
         </div>
