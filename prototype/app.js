@@ -8,6 +8,7 @@
   var LS_MEMO     = "gamsanavi.memo.v1";      // { caseId: "메모" }
   var LS_SETTINGS = "gamsanavi.settings.v1";  // { school, auditDate }
   var LS_METRICS  = "gamsanavi.metrics.v1";   // 사용 효과 측정용
+  var LS_ROLE     = "gamsanavi.role.v1";      // 담당 역할 필터
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -42,6 +43,9 @@
   });
   var activeCat = CATEGORIES[0].id;
   var searchTerm = "";
+  var activeRole = "";
+  try { activeRole = localStorage.getItem(LS_ROLE) || ""; } catch (e) { /* 차단 시 무시 */ }
+  /* 복원된 역할에 맞춰 첫 활성 분야를 보이는 분야 중 하나로 맞춘다(아래 visibleCategories 사용) */
 
   /* ───────── 사용 효과 측정 (연구 효과성 검증용) ───────── */
   var ACTIVE_GAP_MS = 10 * 60 * 1000; // 10분 이상 비활동이면 다른 세션으로 보고 시간 미합산
@@ -155,6 +159,12 @@
     activeCat = catId;
     searchTerm = "";
     $("#search").value = "";
+    // 역할 필터가 켜져 있고 대상 분야가 그 역할에 없으면 전체 보기로 풀어 준다
+    if (!visibleCategories().some(function (c) { return c.id === catId; })) {
+      activeRole = "";
+      try { localStorage.setItem(LS_ROLE, ""); } catch (e) { /* 무시 */ }
+      var sel = $("#role-filter"); if (sel) sel.value = "";
+    }
     renderCats(); renderCases(); switchTab("check");
   }
 
@@ -166,8 +176,64 @@
     });
   }
 
+  /* ④ 담당 역할 → 점검 분야 매핑 (학교 업무분장 기준) */
+  var ROLES = [
+    { id: "gyomu",   name: "교무·교육과정 담당", cats: ["gyomu", "chehum"] },
+    { id: "haengjeong", name: "행정실(회계·계약·시설)", cats: ["hoegye", "gyeyak", "sisul"] },
+    { id: "boksu",   name: "인사·복무·보수 담당", cats: ["bokmu", "sudang"] },
+    { id: "bangkwa", name: "방과후·돌봄 담당", cats: ["bangkwa"] },
+    { id: "geupsik", name: "영양·급식 담당", cats: ["geupsik"] },
+    { id: "jeongbo", name: "정보·개인정보 담당", cats: ["jeongbo"] },
+    { id: "sahak",   name: "사립학교·법인 담당", cats: ["sahak"] }
+  ];
+  function roleById(id) {
+    for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === id) return ROLES[i];
+    return null;
+  }
+  /* 현재 역할에 포함된 분야만 추린다(역할 미선택 시 전체) */
+  function visibleCategories() {
+    var r = roleById(activeRole);
+    if (!r) return CATEGORIES;
+    return CATEGORIES.filter(function (c) { return r.cats.indexOf(c.id) !== -1; });
+  }
+
+  /* ⑥ 감사 준비 일정 — 감사실무매뉴얼 기준 D-day 역산 작업 */
+  var TIMELINE = [
+    { off: 30, task: "분야별 자체점검 착수 — 빈출(★) 사례부터 확인", note: "준비 기간 확보" },
+    { off: 10, task: "종합감사 수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
+    { off: 7,  task: "감사계획 통보 수령·검토 (감사대상·범위·기간)", note: "감사예정일 7일 전(시행령 §12)" },
+    { off: 3,  task: "수감자료·비치서류 최종 점검, 담당별 준비 상태 확인", note: "" },
+    { off: 1,  task: "감사장 설치·준비물 확인 (복사기·프린터·파쇄기·통장·사무용품)", note: "감사실무매뉴얼 감사당일 준비" },
+    { off: 0,  task: "감사 개시 — 기관장 환담, 수감 시작", note: "" }
+  ];
+  function renderTimeline() {
+    var el = $("#dash-timeline");
+    if (!settings.auditDate) {
+      el.innerHTML = '<li class="tl-empty">감사 예정일을 입력하면 매뉴얼 기준 준비 일정이 역산되어 표시됩니다.</li>';
+      return;
+    }
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var target = new Date(settings.auditDate + "T00:00:00");
+    el.innerHTML = TIMELINE.map(function (t) {
+      var d = new Date(target); d.setDate(d.getDate() - t.off);
+      var dstr = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+      var ddiff = Math.round((d - today) / 86400000);
+      var state, badge;
+      if (ddiff < 0) { state = "past"; badge = "지남"; }
+      else if (ddiff === 0) { state = "today"; badge = "오늘"; }
+      else if (ddiff <= 7) { state = "soon"; badge = "D-" + ddiff; }
+      else { state = "future"; badge = "D-" + ddiff; }
+      return '<li class="tl-item tl-' + state + '">' +
+        '<span class="tl-date">' + dstr + '</span>' +
+        '<span class="tl-badge">' + badge + "</span>" +
+        '<span class="tl-task">' + esc(t.task) +
+        (t.note ? ' <span class="tl-note">' + esc(t.note) + "</span>" : "") + "</span></li>";
+    }).join("");
+  }
+
   /* ───────── 탭0: 대시보드 ───────── */
   function renderDash() {
+    renderTimeline();
     // D-day
     var dEl = $("#dday-big"), dateEl = $("#dday-date");
     if (settings.auditDate) {
@@ -248,7 +314,7 @@
   /* ───────── 탭1: 분야별 자체점검 ───────── */
   function renderCats() {
     var html = "";
-    CATEGORIES.forEach(function (cat) {
+    visibleCategories().forEach(function (cat) {
       var p = catProgress(cat.id);
       html += '<li data-cat="' + cat.id + '"' + (cat.id === activeCat && !searchTerm ? ' class="active"' : "") + ">" +
         '<span class="cat-prog">' + p.done + "/" + p.total + "</span>" +
@@ -265,6 +331,31 @@
       });
     });
   }
+
+  /* ④ 역할 선택 드롭다운 구성 + 동작 */
+  (function initRoleFilter() {
+    var sel = $("#role-filter");
+    ROLES.forEach(function (r) {
+      var o = document.createElement("option");
+      o.value = r.id; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    sel.value = activeRole;
+    // 복원된 역할에 첫 활성 분야가 없으면 보이는 첫 분야로 맞춘다
+    var vis0 = visibleCategories();
+    if (!vis0.some(function (c) { return c.id === activeCat; }) && vis0.length) activeCat = vis0[0].id;
+    sel.addEventListener("change", function () {
+      activeRole = sel.value;
+      try { localStorage.setItem(LS_ROLE, activeRole); } catch (e) { /* 무시 */ }
+      // 선택한 역할에 현재 분야가 없으면 역할의 첫 분야로 이동
+      var vis = visibleCategories();
+      if (!vis.some(function (c) { return c.id === activeCat; })) {
+        activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
+      }
+      searchTerm = ""; $("#search").value = "";
+      renderCats(); renderCases();
+    });
+  })();
 
   function matchesSearch(c, term) {
     var hay = (c.title + " " + c.detail + " " + c.basis + " " + c.checks.join(" ") + " " +
@@ -905,6 +996,86 @@
       });
       html += '<tr class="freq-grand"><td colspan="2">합계</td><td class="num">' + freqGrandTotal() + "</td></tr>";
       html += "</tbody></table>";
+    }
+
+    $("#print-area").innerHTML = html;
+    window.print();
+  });
+
+  /* ⑤ 인수인계 보고서 — 후임자가 이어받을 수 있도록 메모·해당없음 사유·담당 배분·다음 할 일 정리 */
+  $("#handover-report").addEventListener("click", function () {
+    var today = new Date();
+    var dateStr = today.getFullYear() + ". " + (today.getMonth() + 1) + ". " + today.getDate() + ".";
+    var cp = totalProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+
+    var html = "<h1>종합감사 준비 인수인계 보고서</h1>" +
+      '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
+      (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
+      " · 작성일 " + dateStr + " · 종합 준비도 " + checkPct + "%</p>" +
+      '<table class="sign-table"><tr><th>인계자</th><th>인수자</th><th>확인(교감)</th></tr>' +
+      "<tr><td></td><td></td><td></td></tr></table>";
+
+    // 1) 분야별 진행 요약
+    html += "<h2>1. 분야별 진행 상황</h2>" +
+      "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th></tr></thead><tbody>";
+    CATEGORIES.forEach(function (cat) {
+      var p = catProgress(cat.id);
+      html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
+        (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td></tr>";
+    });
+    html += "</tbody></table>";
+
+    // 2) 인계 메모 (담당자가 남긴 메모) — 인수인계의 핵심
+    var memoCases = CASES.filter(function (c) { return memos[c.id]; });
+    html += "<h2>2. 인계 메모 (" + memoCases.length + "건) — 확인한 문서·후임자에게 남길 말</h2>";
+    if (memoCases.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th style=\"width:30%\">사례</th><th>메모</th></tr></thead><tbody>";
+      memoCases.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) +
+          '</td><td class="print-memo">' + esc(memos[c.id]) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">남긴 메모가 없습니다. 각 사례의 ✎ 메모에 확인 결과를 기록하면 이 자리에 정리됩니다.</p>';
+    }
+
+    // 3) 해당없음 처리 사례 + 사유
+    var naList = CASES.filter(function (c) { return naCases[c.id]; });
+    html += "<h2>3. 해당없음 처리 사례 (" + naList.length + "건) — 우리 학교 무관 사유 확인 필요</h2>";
+    if (naList.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";
+      naList.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">해당없음으로 처리한 사례가 없습니다.</p>';
+    }
+
+    // 4) 수감자료 담당 배분
+    html += "<h2>4. 수감자료 담당 배분 현황</h2>";
+    if (board.length) {
+      html += "<table><thead><tr><th>항목</th><th>담당부서</th><th>담당자</th><th>상태</th></tr></thead><tbody>";
+      board.forEach(function (i) {
+        html += "<tr><td>" + esc(i.name) + "</td><td>" + esc(i.dept) + "</td><td>" + esc(i.owner) + "</td><td>" + esc(i.status) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">등록된 수감자료 목록이 없습니다.</p>';
+    }
+
+    // 5) 후임자가 이어서 할 일 — 빈출(★) 미점검
+    var next = CASES.filter(function (c) { return (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c); });
+    html += "<h2>5. 이어서 할 일 — 빈출(★) 사례 중 미완료 (" + next.length + "건)</h2>";
+    if (next.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";
+      next.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">빈출 사례 점검을 모두 마쳤습니다.</p>';
     }
 
     $("#print-area").innerHTML = html;

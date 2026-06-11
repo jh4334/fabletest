@@ -76,6 +76,26 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .todo-list .todo-cat { font-size: 12px; color: #889; margin-left: 8px; }
 .todo-list .all-done { color: #1f6f3f; cursor: default; }
 
+/* ⑥ 감사 준비 일정 (D-day 역산) */
+.timeline { list-style: none; }
+.tl-item { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #e4e8ef; }
+.tl-item:last-child { border-bottom: 0; }
+.tl-date { font-size: 12.5px; color: #556; width: 90px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.tl-badge { font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 9px; flex-shrink: 0; min-width: 44px; text-align: center; }
+.tl-future .tl-badge { background: #eef1f6; color: #667; }
+.tl-soon .tl-badge { background: #fdecc8; color: #8a5a00; }
+.tl-today .tl-badge { background: #1f6f3f; color: #fff; }
+.tl-past .tl-badge { background: #eee; color: #aab; }
+.tl-task { font-size: 13.5px; color: #233; }
+.tl-past .tl-task { color: #99a; text-decoration: line-through; }
+.tl-note { font-size: 11.5px; color: #889; }
+.tl-empty { color: #889; font-size: 13px; padding: 6px 0; }
+
+/* ④ 역할 선택 */
+.role-pick { display: block; margin-bottom: 10px; }
+.role-pick span { display: block; font-size: 12px; color: #556; margin-bottom: 3px; }
+#role-filter { width: 100%; padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 13.5px; background: #fff; }
+
 /* ── 점검 탭 레이아웃 ── */
 .layout { display: flex; gap: 16px; align-items: flex-start; }
 .sidebar { width: 250px; flex-shrink: 0; position: sticky; top: 10px; }
@@ -249,6 +269,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .print-effect { font-size: 11.5px; color: #1f3a5f; background: #f2f7f3; border: 1px solid #cfe3d4; border-radius: 6px; padding: 6px 10px; margin: 0 0 12px; }
   .print-freq td.num { text-align: right; }
   .print-freq .freq-grand td { background: #eee; font-weight: 700; }
+  .hd-none { font-size: 11px; color: #888; margin: 2px 0 8px; }
 }
 
 @media (max-width: 800px) {

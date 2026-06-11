@@ -53,6 +53,10 @@
         <div id="dash-cats"></div>
       </div>
       <div class="dash-card dash-wide">
+        <h4>감사 준비 일정 <span class="muted">— 감사실무매뉴얼 기준 D-day 역산</span></h4>
+        <ol id="dash-timeline" class="timeline"></ol>
+      </div>
+      <div class="dash-card dash-wide">
         <h4>이번 주 추천 점검 <span class="muted">— 빈출(★) 사례 중 미완료 항목</span></h4>
         <ul id="dash-todo" class="todo-list"></ul>
       </div>
@@ -63,6 +67,11 @@
   <section id="tab-check" class="tab-panel">
     <div class="layout">
       <aside class="sidebar no-print">
+        <label class="role-pick"><span>담당 역할</span>
+          <select id="role-filter">
+            <option value="">전체 분야 보기</option>
+          </select>
+        </label>
         <input type="search" id="search" placeholder="사례·규정 검색 (예: 초과근무, 수의계약)">
         <ul id="cat-list" class="cat-list"></ul>
       </aside>
@@ -107,6 +116,7 @@
   <section id="tab-stats" class="tab-panel">
     <div class="status-actions no-print">
       <button id="print-report" class="btn primary">📄 점검 결과 보고서 인쇄 / PDF</button>
+      <button id="handover-report" class="btn">🔁 인수인계 보고서</button>
       <button id="check-csv" class="btn">점검 결과 CSV</button>
       <button id="backup-btn" class="btn">💾 백업 파일 저장</button>
       <button id="restore-btn" class="btn">📂 백업 불러오기</button>
