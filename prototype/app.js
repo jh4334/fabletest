@@ -129,10 +129,19 @@
       dEl.className = "dday-big " + (diff > 90 ? "far" : (diff > 30 ? "mid" : ""));
       dateEl.textContent = (settings.school ? settings.school + " · " : "") +
         "감사 예정일 " + settings.auditDate;
+      // 종합감사 수감자료는 감사 개시 10일 전까지 제출 (충북교육청 자체감사 규칙 제20조제4항)
+      var sub = new Date(target); sub.setDate(sub.getDate() - 10);
+      var sdiff = Math.round((sub - today) / 86400000);
+      var subStr = sub.getFullYear() + "-" + ("0" + (sub.getMonth() + 1)).slice(-2) +
+        "-" + ("0" + sub.getDate()).slice(-2);
+      $("#dday-mile").innerHTML = "📌 수감자료 제출 마감 <b>" + subStr + "</b> " +
+        (sdiff > 0 ? "(D-" + sdiff + ")" : (sdiff === 0 ? "(오늘!)" : "(마감 지남)")) +
+        ' <span class="muted">— 감사 개시 10일 전까지 제출(충북교육청 자체감사 규칙 제20조)</span>';
     } else {
       dEl.textContent = "D-?";
       dEl.className = "dday-big unset";
       dateEl.textContent = "학교명과 감사 예정일을 입력하세요";
+      $("#dday-mile").innerHTML = "";
     }
     $("#set-school").value = settings.school || "";
     $("#set-date").value = settings.auditDate || "";
@@ -208,7 +217,8 @@
   }
 
   function matchesSearch(c, term) {
-    var hay = (c.title + " " + c.detail + " " + c.basis + " " + c.checks.join(" ")).toLowerCase();
+    var hay = (c.title + " " + c.detail + " " + c.basis + " " + c.checks.join(" ") + " " +
+      (c.examples || []).join(" ")).toLowerCase();
     return hay.indexOf(term.toLowerCase()) !== -1;
   }
 
@@ -222,6 +232,13 @@
       return;
     }
     var html = "";
+    // 분야 전체가 우리 학교와 무관할 때(예: 공립학교의 사학분야) 한 번에 제외
+    if (!searchTerm) {
+      var allNA = list.every(function (c) { return naCases[c.id]; });
+      html += '<div class="cat-na-bar no-print"><button type="button" class="link-btn" id="cat-na-all">' +
+        (allNA ? "↩ 이 분야 전체를 점검 대상으로 되돌리기" : "이 분야 전체 해당없음(우리 학교 무관)") +
+        "</button></div>";
+    }
     list.forEach(function (c) {
       var isNA = !!naCases[c.id];
       var memo = memos[c.id] || "";
@@ -229,10 +246,14 @@
         '<div class="case-head"><div><h3>' + esc(c.title) + "</h3>" +
         (c.verified === false ? '<span class="unverified">⚠ 원문 확인 전(예시)</span>' : "") +
         "</div><div class=\"head-chips\">" +
-        ((c.freq || 0) >= 3 ? '<span class="chip freq">★ 빈출</span>' : "") +
-        '<span class="chip">' + esc(c.disposition) + "</span></div></div>" +
+        ((c.freq || 0) >= 3 ? '<span class="chip freq">★ 빈출' + (c.freq > 3 ? " ×" + c.freq : "") + "</span>" : "") +
+        (c.disposition ? '<span class="chip">' + esc(c.disposition) + "</span>" : "") + "</div></div>" +
         (searchTerm ? '<div class="case-docs" style="margin:2px 0 6px">분야: ' + esc(catById(c.cat).name) + "</div>" : "") +
         '<p class="case-detail">' + esc(c.detail) + "</p>" +
+        (c.examples && c.examples.length ?
+          '<details class="case-ex"><summary>실제 지적사례 ' + c.examples.length + "건 보기</summary><ul>" +
+          c.examples.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") +
+          "</ul></details>" : "") +
         '<div class="case-basis">' + esc(c.basis) + "</div>" +
         '<div class="check-list">';
       c.checks.forEach(function (q, i) {
@@ -262,6 +283,19 @@
         renderCats();
       });
     });
+    var naAllBtn = document.getElementById("cat-na-all");
+    if (naAllBtn) {
+      naAllBtn.addEventListener("click", function () {
+        var allNA = list.every(function (c) { return naCases[c.id]; });
+        if (!allNA && !confirm("이 분야의 사례 " + list.length + "건을 모두 '해당없음'으로 표시할까요?")) return;
+        list.forEach(function (c) {
+          if (allNA) delete naCases[c.id];
+          else naCases[c.id] = true;
+        });
+        save(LS_NA, naCases);
+        renderCats(); renderCases();
+      });
+    }
     document.querySelectorAll("#case-area .na-toggle").forEach(function (el) {
       el.addEventListener("click", function () {
         var id = el.dataset.na;
@@ -369,6 +403,32 @@
     $("#paste-input").value = "";
     $("#paste-box").removeAttribute("open");
     renderBoard();
+  });
+
+  /* 충북교육청 감사실무매뉴얼(2025 개정)의 종합감사 공통 준비·징구 서류 */
+  var OFFICIAL_ITEMS = [
+    ["종합감사 수감자료 (감사 개시 10일 전까지 제출)", "행정실"],
+    ["주요업무계획(학교교육계획) 책자", "교무부"],
+    ["금고검사조서 (예금·현금 현재 조서, 예금 잔액증명서, 기관 계좌 수신정보조회표)", "행정실"],
+    ["공무원행동강령 이행 점검표", "교무부"],
+    ["운동부 청렴도 제고 자체 점검표 (운동부 운영교만)", "체육부"],
+    ["우수사례 (인쇄물 및 한글 파일, 수감자료 제출 시)", ""],
+    ["제도개선 및 건의사항 (수감자료 제출 시)", ""],
+    ["감사장 준비: 복사기·프린터·파쇄기·사무분장표·직원배치도·비치서류·기관 통장·사무용품", "행정실"]
+  ];
+  $("#official-btn").addEventListener("click", function () {
+    var existing = {};
+    board.forEach(function (i) { existing[i.name] = true; });
+    var added = 0;
+    OFFICIAL_ITEMS.forEach(function (it) {
+      if (existing[it[0]]) return;
+      board.push({ name: it[0], dept: it[1], owner: "", status: "미시작" });
+      added++;
+    });
+    save(LS_BOARD, board);
+    renderBoard();
+    alert(added ? "감사실무매뉴얼 기준 기본 준비물 " + added + "건을 추가했습니다.\n학교 상황에 맞게 담당자를 지정하고, 해당 없는 항목은 '해당없음'으로 바꾸세요."
+      : "기본 준비물이 이미 모두 등록되어 있습니다.");
   });
 
   $("#template-btn").addEventListener("click", function () {
@@ -528,18 +588,32 @@
     counts.forEach(function (r) { html += barRowHTML(r.name, r.n, maxN); });
     html += "</div>";
 
-    // 처분 유형 분포
-    var groups = {};
-    CASES.forEach(function (c) {
-      var g = dispositionGroup(c);
-      groups[g] = (groups[g] || 0) + 1;
-    });
-    var gRows = Object.keys(groups).map(function (g) { return { name: g, n: groups[g] }; })
-      .sort(function (a, b) { return b.n - a.n; });
-    var gMax = gRows[0] ? gRows[0].n : 1;
-    html += '<div class="status-card"><h4>처분 유형 분포 — 금전 처분(회수)이 걸린 분야가 우선 점검 대상</h4>';
-    gRows.forEach(function (r) { html += barRowHTML(r.name, r.n, gMax); });
-    html += "</div>";
+    // 처분 유형 분포 — 사례에 처분 정보가 없으면(2025 사례집은 처분 결과를 생략) 지적 빈도 분포로 대체
+    var hasDispo = CASES.some(function (c) { return c.disposition; });
+    if (hasDispo) {
+      var groups = {};
+      CASES.forEach(function (c) {
+        var g = dispositionGroup(c);
+        groups[g] = (groups[g] || 0) + 1;
+      });
+      var gRows = Object.keys(groups).map(function (g) { return { name: g, n: groups[g] }; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var gMax = gRows[0] ? gRows[0].n : 1;
+      html += '<div class="status-card"><h4>처분 유형 분포 — 금전 처분(회수)이 걸린 분야가 우선 점검 대상</h4>';
+      gRows.forEach(function (r) { html += barRowHTML(r.name, r.n, gMax); });
+      html += "</div>";
+    } else {
+      var fRows = CATEGORIES.map(function (cat) {
+        var n = CASES.filter(function (c) { return c.cat === cat.id; })
+          .reduce(function (s, c) { return s + (c.freq || 0); }, 0);
+        return { name: cat.name, n: n };
+      }).filter(function (r) { return r.n > 0; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var fMax = fRows[0] ? fRows[0].n : 1;
+      html += '<div class="status-card"><h4>분야별 지적 빈도 — 사례집 수록 지적사례 건수 기준, 빈도 높은 분야가 우선 점검 대상</h4>';
+      fRows.forEach(function (r) { html += barRowHTML(r.name, r.n, fMax); });
+      html += "</div>";
+    }
 
     // 점검 진행률
     html += '<div class="status-card"><h4>분야별 자체점검 진행률</h4>';

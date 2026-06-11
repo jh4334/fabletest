@@ -53,15 +53,16 @@
 /* 감사내비 data.js와 동일한 분야 목록 (분야 추가 시 여기와 data.js 둘 다 갱신) */
 var CATEGORIES = [
   { id: "gyomu",   name: "교무·학사" },
-  { id: "bokmu",   name: "복무·출장" },
-  { id: "sudang",  name: "수당·강사료" },
+  { id: "bokmu",   name: "인사·복무·출장" },
+  { id: "sudang",  name: "보수·수당" },
   { id: "gyeyak",  name: "계약·물품" },
-  { id: "chehum",  name: "현장체험학습·수학여행" },
+  { id: "chehum",  name: "현장체험학습" },
   { id: "hoegye",  name: "학교회계·예산" },
   { id: "bangkwa", name: "방과후학교·돌봄" },
   { id: "geupsik", name: "급식" },
   { id: "jeongbo", name: "개인정보·정보화" },
-  { id: "sisul",   name: "시설·안전" }
+  { id: "sisul",   name: "시설·안전" },
+  { id: "sahak",   name: "사립학교·법인" }
 ];
 document.getElementById("cat-help").textContent =
   CATEGORIES.map(function (c) { return c.id + "(" + c.name + ")"; }).join(", ");

@@ -59,6 +59,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .dday-big.mid { color: #b07b00; }
 .dday-big.unset { color: #99a; }
 .dday-date { font-size: 13px; color: #667; margin: 4px 0 12px; }
+.dday-mile { font-size: 13px; color: #444; background: #fdf6e3; border: 1px solid #f0e0b0; border-radius: 8px; padding: 7px 10px; margin: 0 0 12px; }
+.dday-mile:empty { display: none; }
 .score-big { font-size: 44px; font-weight: 800; color: #1f3a5f; line-height: 1.1; }
 .score-detail { font-size: 13px; color: #667; margin-top: 10px; }
 .dash-cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; cursor: pointer; }
@@ -109,6 +111,11 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 }
 .chip.freq { background: #fff3d6; color: #9a6a00; }
 .case-detail { margin: 8px 0; color: #444; }
+.case-ex { margin: 6px 0; font-size: 13px; }
+.case-ex summary { cursor: pointer; color: #a04420; font-weight: 700; }
+.case-ex ul { margin: 6px 0 4px; padding-left: 20px; color: #555; }
+.case-ex li { margin: 3px 0; }
+.cat-na-bar { text-align: right; margin: 0 0 6px; }
 .case-basis { font-size: 13px; color: #555; background: #f2f5f9; padding: 6px 10px; border-radius: 6px; }
 .case-basis::before { content: "근거: "; font-weight: 700; color: #1f3a5f; }
 .unverified { font-size: 11.5px; color: #b07b00; margin-left: 6px; }
