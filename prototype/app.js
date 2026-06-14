@@ -33,7 +33,7 @@
   var board    = load(LS_BOARD, []);
   var naCases  = load(LS_NA, {});
   var memos    = load(LS_MEMO, {});
-  var settings = load(LS_SETTINGS, { school: "", auditDate: "" });
+  var settings = load(LS_SETTINGS, { school: "", auditDate: "", auditType: "jonghap" });
   var metrics  = load(LS_METRICS, {
     firstActAt: null,   // 최초 점검 시각(ISO)
     lastActAt: null,    // 마지막 활동 시각(ms)
@@ -96,6 +96,23 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
     });
   }
+  /* ㉢ 근거 규정의 법령명(「…」)을 국가법령정보센터 검색 링크로 변환 */
+  function lawSearchURL(name) {
+    return "https://www.law.go.kr/LSW/lsSc.do?menuId=1&query=" + encodeURIComponent(name);
+  }
+  function lawLinksHTML(basis) {
+    var s = String(basis || "");
+    var out = "", last = 0, re = /「([^」]+)」/g, m;
+    while ((m = re.exec(s)) !== null) {
+      out += esc(s.slice(last, m.index));
+      out += '<a class="law-link" target="_blank" rel="noopener" href="' +
+        esc(lawSearchURL(m[1])) + '" title="국가법령정보센터에서 열기">「' + esc(m[1]) + "」</a>";
+      last = m.index + m[0].length;
+    }
+    out += esc(s.slice(last));
+    return out;
+  }
+
   var CAT_MAP = {};
   CATEGORIES.forEach(function (c) { CAT_MAP[c.id] = c; });
   /* data.js 입력 실수(cat 오타)가 있어도 앱이 죽지 않고 원시 id를 표시 */
@@ -117,9 +134,10 @@
     });
     return { total: total, done: done };
   }
+  /* 진행률 분모는 현재 감사 종류의 점검 대상 분야만 합산 */
   function totalProgress() {
     var t = 0, d = 0;
-    CATEGORIES.forEach(function (cat) {
+    scopeCats().forEach(function (cat) {
       var p = catProgress(cat.id);
       t += p.total; d += p.done;
     });
@@ -176,6 +194,40 @@
     });
   }
 
+  /* ⑦ 감사 종류 → 점검 범위 (충북 자체감사 규칙·매뉴얼 기준)
+     cats:null = 전 분야, subDays = 수감자료 제출(감사 개시 N일 전), comp = 종합감사 일정 */
+  var AUDIT_TYPES = [
+    { id: "jonghap",  name: "종합감사", cats: null, subDays: 10, comp: true,
+      note: "업무 전반의 적법성·타당성 (전 분야)" },
+    { id: "jaemu",    name: "재무감사", cats: ["hoegye", "gyeyak", "sudang"], subDays: 7,
+      note: "예산 운용실태·회계처리 적정성" },
+    { id: "bokmu",    name: "복무감사", cats: ["bokmu", "sudang"], subDays: 7,
+      note: "복무의무 위반·근무실태·비위" },
+    { id: "teukjeong", name: "특정감사", cats: null, subDays: 7,
+      note: "특정 업무·사업·자금 (해당 분야만 점검, 나머지는 해당없음 처리)" },
+    { id: "boan",     name: "보안감사", cats: ["jeongbo"], subDays: 7,
+      note: "정보보안·개인정보·보안점검" },
+    { id: "jaemul",   name: "재물조사", cats: ["gyeyak"], subDays: 7,
+      note: "물품·재산 정기 재물조사 (공유재산 및 물품관리법 제59·60조)" },
+    { id: "ilsang",   name: "일상감사", cats: ["hoegye", "gyeyak"], subDays: null,
+      note: "주요 업무 집행 전 적법성·타당성 검토" }
+  ];
+  function currentType() {
+    for (var i = 0; i < AUDIT_TYPES.length; i++) {
+      if (AUDIT_TYPES[i].id === settings.auditType) return AUDIT_TYPES[i];
+    }
+    return AUDIT_TYPES[0]; // 기본: 종합감사
+  }
+  function scopeCatIds() {
+    var t = currentType();
+    return t.cats || CATEGORIES.map(function (c) { return c.id; });
+  }
+  function inScope(catId) { return scopeCatIds().indexOf(catId) !== -1; }
+  /* 현재 감사 종류의 점검 대상 분야 */
+  function scopeCats() {
+    return CATEGORIES.filter(function (c) { return inScope(c.id); });
+  }
+
   /* ④ 담당 역할 → 점검 분야 매핑 (학교 업무분장 기준) */
   var ROLES = [
     { id: "gyomu",   name: "교무·교육과정 담당", cats: ["gyomu", "chehum"] },
@@ -190,17 +242,20 @@
     for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === id) return ROLES[i];
     return null;
   }
-  /* 현재 역할에 포함된 분야만 추린다(역할 미선택 시 전체) */
+  /* 점검 탭에 보일 분야 = 감사 종류 범위 ∩ 담당 역할 (역할 미선택 시 범위 전체)
+     범위와 역할이 겹치지 않으면 역할을 무시하고 범위 전체를 보여 빈 화면을 막는다 */
   function visibleCategories() {
+    var base = scopeCats();
     var r = roleById(activeRole);
-    if (!r) return CATEGORIES;
-    return CATEGORIES.filter(function (c) { return r.cats.indexOf(c.id) !== -1; });
+    if (!r) return base;
+    var inter = base.filter(function (c) { return r.cats.indexOf(c.id) !== -1; });
+    return inter.length ? inter : base;
   }
 
   /* ⑥ 감사 준비 일정 — 감사실무매뉴얼 기준 D-day 역산 작업 */
   var TIMELINE = [
     { off: 30, task: "분야별 자체점검 착수 — 빈출(★) 사례부터 확인", note: "준비 기간 확보" },
-    { off: 10, task: "종합감사 수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
+    { key: "submit", off: 10, task: "수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
     { off: 7,  task: "감사계획 통보 수령·검토 (감사대상·범위·기간)", note: "감사예정일 7일 전(시행령 §12)" },
     { off: 3,  task: "수감자료·비치서류 최종 점검, 담당별 준비 상태 확인", note: "" },
     { off: 1,  task: "감사장 설치·준비물 확인 (복사기·프린터·파쇄기·통장·사무용품)", note: "감사실무매뉴얼 감사당일 준비" },
@@ -212,9 +267,19 @@
       el.innerHTML = '<li class="tl-empty">감사 예정일을 입력하면 매뉴얼 기준 준비 일정이 역산되어 표시됩니다.</li>';
       return;
     }
+    var type = currentType();
     var today = new Date(); today.setHours(0, 0, 0, 0);
     var target = new Date(settings.auditDate + "T00:00:00");
-    el.innerHTML = TIMELINE.map(function (t) {
+    // 감사 종류에 맞춰 수감자료 제출(off) 행을 조정한다
+    var steps = TIMELINE.map(function (t) {
+      if (t.key === "submit") {
+        if (type.subDays === null) return null; // 일상감사 등: 수감자료 단계 없음
+        return { off: type.subDays, task: "수감자료 제출",
+          note: type.comp ? "감사 개시 10일 전까지(자체감사 규칙 §20④)" : "기관 지정 기한 확인(감사 개시 " + type.subDays + "일 전 권장)" };
+      }
+      return t;
+    }).filter(Boolean);
+    el.innerHTML = steps.map(function (t) {
       var d = new Date(target); d.setDate(d.getDate() - t.off);
       var dstr = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
       var ddiff = Math.round((d - today) / 86400000);
@@ -241,18 +306,23 @@
       var target = new Date(settings.auditDate + "T00:00:00");
       var diff = Math.round((target - today) / 86400000);
       var label = diff > 0 ? "D-" + diff : (diff === 0 ? "D-day" : "D+" + (-diff));
+      var type = currentType();
       dEl.textContent = label;
       dEl.className = "dday-big " + (diff > 90 ? "far" : (diff > 30 ? "mid" : ""));
-      dateEl.textContent = (settings.school ? settings.school + " · " : "") +
-        "감사 예정일 " + settings.auditDate;
-      // 종합감사 수감자료는 감사 개시 10일 전까지 제출 (충북교육청 자체감사 규칙 제20조제4항)
-      var sub = new Date(target); sub.setDate(sub.getDate() - 10);
-      var sdiff = Math.round((sub - today) / 86400000);
-      var subStr = sub.getFullYear() + "-" + ("0" + (sub.getMonth() + 1)).slice(-2) +
-        "-" + ("0" + sub.getDate()).slice(-2);
-      $("#dday-mile").innerHTML = "📌 수감자료 제출 마감 <b>" + subStr + "</b> " +
-        (sdiff > 0 ? "(D-" + sdiff + ")" : (sdiff === 0 ? "(오늘!)" : "(마감 지남)")) +
-        ' <span class="muted">— 감사 개시 10일 전까지 제출(충북교육청 자체감사 규칙 제20조)</span>';
+      dateEl.innerHTML = (settings.school ? esc(settings.school) + " · " : "") +
+        '<span class="dday-type">' + esc(type.name) + "</span> · 감사 예정일 " + esc(settings.auditDate);
+      // 수감자료 제출 마감 — 감사 종류별 기한 (종합감사는 개시 10일 전, 자체감사 규칙 §20④)
+      if (type.subDays === null) {
+        $("#dday-mile").innerHTML = '🔎 ' + esc(type.note);
+      } else {
+        var sub = new Date(target); sub.setDate(sub.getDate() - type.subDays);
+        var sdiff = Math.round((sub - today) / 86400000);
+        var subStr = sub.getFullYear() + "-" + ("0" + (sub.getMonth() + 1)).slice(-2) +
+          "-" + ("0" + sub.getDate()).slice(-2);
+        $("#dday-mile").innerHTML = "📌 수감자료 제출 마감 <b>" + subStr + "</b> " +
+          (sdiff > 0 ? "(D-" + sdiff + ")" : (sdiff === 0 ? "(오늘!)" : "(마감 지남)")) +
+          ' <span class="muted">— ' + (type.comp ? "감사 개시 10일 전(자체감사 규칙 §20④)" : "기관 지정 기한 확인") + "</span>";
+      }
     } else {
       dEl.textContent = "D-?";
       dEl.className = "dday-big unset";
@@ -273,8 +343,8 @@
       (boardPct === null ? "수감자료 목록 미등록" :
         "수감자료 " + bp.done + "/" + bp.total + "건 (" + boardPct + "%)");
 
-    // 분야별 현황 (진행률 낮은 순)
-    var rows = CATEGORIES.map(function (cat) {
+    // 분야별 현황 (진행률 낮은 순) — 현재 감사 종류의 점검 대상 분야만
+    var rows = scopeCats().map(function (cat) {
       var p = catProgress(cat.id);
       var pct = p.total ? Math.round(p.done / p.total * 100) : 100;
       return { cat: cat, p: p, pct: pct };
@@ -289,9 +359,9 @@
       bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
 
-    // 추천 점검: 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
+    // 추천 점검: 현재 감사 종류 범위 내 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
     var todos = CASES.filter(function (c) {
-      return (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c);
+      return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c);
     }).slice(0, 6);
     $("#dash-todo").innerHTML = todos.length
       ? todos.map(function (c) {
@@ -304,16 +374,40 @@
     });
   }
 
+  /* ⑦ 감사 종류 드롭다운 구성 */
+  (function initTypeSelect() {
+    var sel = $("#set-type");
+    AUDIT_TYPES.forEach(function (t) {
+      var o = document.createElement("option");
+      o.value = t.id; o.textContent = t.name;
+      o.title = t.note;
+      sel.appendChild(o);
+    });
+    sel.value = settings.auditType || "jonghap";
+  })();
+
   $("#save-settings").addEventListener("click", function () {
     settings.school = $("#set-school").value.trim();
     settings.auditDate = $("#set-date").value;
+    settings.auditType = $("#set-type").value;
     save(LS_SETTINGS, settings);
-    renderDash();
+    // 감사 종류가 바뀌면 점검 탭의 활성 분야를 범위 안으로 맞춘다
+    var vis = visibleCategories();
+    if (!vis.some(function (c) { return c.id === activeCat; })) {
+      activeCat = vis.length ? vis[0].id : scopeCats()[0].id;
+    }
+    renderDash(); renderCats(); renderCases(); renderStats();
   });
 
   /* ───────── 탭1: 분야별 자체점검 ───────── */
   function renderCats() {
     var html = "";
+    // 종합감사가 아니면 현재 감사 종류와 점검 범위를 안내
+    var type = currentType();
+    if (type.id !== "jonghap") {
+      html += '<li class="cat-scope-note">🔎 <b>' + esc(type.name) + '</b> 범위만 표시 중 <span>' +
+        esc(type.note) + "</span></li>";
+    }
     visibleCategories().forEach(function (cat) {
       var p = catProgress(cat.id);
       html += '<li data-cat="' + cat.id + '"' + (cat.id === activeCat && !searchTerm ? ' class="active"' : "") + ">" +
@@ -322,7 +416,7 @@
         '<div class="cat-desc">' + esc(cat.desc) + "</div></li>";
     });
     $("#cat-list").innerHTML = html;
-    document.querySelectorAll("#cat-list li").forEach(function (li) {
+    document.querySelectorAll("#cat-list li[data-cat]").forEach(function (li) {
       li.addEventListener("click", function () {
         activeCat = li.dataset.cat;
         searchTerm = "";
@@ -395,7 +489,7 @@
           '<details class="case-ex"><summary>실제 지적사례 ' + c.examples.length + "건 보기</summary><ul>" +
           c.examples.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") +
           "</ul></details>" : "") +
-        '<div class="case-basis">' + esc(c.basis) + "</div>" +
+        '<div class="case-basis">' + lawLinksHTML(c.basis) + "</div>" +
         '<div class="check-list">';
       c.checks.forEach(function (q, i) {
         var key = checkKey(c.id, i);
@@ -670,9 +764,11 @@
   }
   function sanitizeSettings(s) {
     s = (s && typeof s === "object") ? s : {};
+    var validType = AUDIT_TYPES.some(function (t) { return t.id === s.auditType; });
     return {
       school: String(s.school || ""),
-      auditDate: /^\d{4}-\d{2}-\d{2}$/.test(s.auditDate || "") ? s.auditDate : ""
+      auditDate: /^\d{4}-\d{2}-\d{2}$/.test(s.auditDate || "") ? s.auditDate : "",
+      auditType: validType ? s.auditType : "jonghap"
     };
   }
   function sanitizeMetrics(m) {
@@ -712,6 +808,9 @@
       metrics  = sanitizeMetrics(payload.metrics);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
       save(LS_MEMO, memos); save(LS_SETTINGS, settings); save(LS_METRICS, metrics);
+      $("#set-type").value = settings.auditType;
+      var vis = visibleCategories();
+      if (!vis.some(function (c) { return c.id === activeCat; })) activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
       renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
       alert("복원이 완료되었습니다.");
     };
@@ -849,9 +948,10 @@
       html += "</div>";
     }
 
-    // 점검 진행률
-    html += '<div class="status-card"><h4>분야별 자체점검 진행률</h4>';
-    CATEGORIES.forEach(function (cat) {
+    // 점검 진행률 — 현재 감사 종류의 점검 대상 분야만
+    var typeName = currentType().name;
+    html += '<div class="status-card"><h4>분야별 자체점검 진행률 <span class="muted">— ' + esc(typeName) + ' 범위</span></h4>';
+    scopeCats().forEach(function (cat) {
       var p = catProgress(cat.id);
       var pct = p.total ? Math.round(p.done / p.total * 100) : 100;
       html += '<div class="progress-label">' + esc(cat.name) + " (" + p.done + "/" + p.total + ")</div>" + progressBarHTML(pct);
@@ -919,10 +1019,11 @@
     var cp = totalProgress();
     var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
 
-    var html = "<h1>학교 종합감사 사전 자체점검 결과 보고</h1>" +
+    var type = currentType();
+    var html = "<h1>학교 " + esc(type.name) + " 사전 자체점검 결과 보고</h1>" +
       '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
       (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
-      " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
+      " · " + esc(type.name) + " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
       '<table class="sign-table"><tr><th>담당</th><th>교감</th><th>교장</th></tr>' +
       "<tr><td></td><td></td><td></td></tr></table>";
 
@@ -936,10 +1037,10 @@
         (gain >= 0 ? "+" + gain : gain) + "p)</p>";
     }
 
-    // 요약
+    // 요약 — 현재 감사 종류 범위 분야만
     html += "<h2>점검 요약 — 전체 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
       "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th><th>해당없음 처리 사례</th></tr></thead><tbody>";
-    CATEGORIES.forEach(function (cat) {
+    scopeCats().forEach(function (cat) {
       var p = catProgress(cat.id);
       var naList = CASES.filter(function (c) { return c.cat === cat.id && naCases[c.id]; })
         .map(function (c) { return c.title; }).join(", ");
@@ -948,8 +1049,8 @@
     });
     html += "</tbody></table>";
 
-    // 분야별 상세
-    CATEGORIES.forEach(function (cat) {
+    // 분야별 상세 — 현재 감사 종류 범위 분야만
+    scopeCats().forEach(function (cat) {
       var catCases = CASES.filter(function (c) { return c.cat === cat.id; });
       if (!catCases.length) return;
       html += "<h2>" + esc(cat.name) + "</h2>" +
@@ -1009,25 +1110,26 @@
     var cp = totalProgress();
     var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
 
-    var html = "<h1>종합감사 준비 인수인계 보고서</h1>" +
+    var type = currentType();
+    var html = "<h1>" + esc(type.name) + " 준비 인수인계 보고서</h1>" +
       '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
       (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
-      " · 작성일 " + dateStr + " · 종합 준비도 " + checkPct + "%</p>" +
+      " · " + esc(type.name) + " · 작성일 " + dateStr + " · 준비도 " + checkPct + "%</p>" +
       '<table class="sign-table"><tr><th>인계자</th><th>인수자</th><th>확인(교감)</th></tr>' +
       "<tr><td></td><td></td><td></td></tr></table>";
 
-    // 1) 분야별 진행 요약
+    // 1) 분야별 진행 요약 — 현재 감사 종류 범위
     html += "<h2>1. 분야별 진행 상황</h2>" +
       "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th></tr></thead><tbody>";
-    CATEGORIES.forEach(function (cat) {
+    scopeCats().forEach(function (cat) {
       var p = catProgress(cat.id);
       html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
         (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td></tr>";
     });
     html += "</tbody></table>";
 
-    // 2) 인계 메모 (담당자가 남긴 메모) — 인수인계의 핵심
-    var memoCases = CASES.filter(function (c) { return memos[c.id]; });
+    // 2) 인계 메모 (담당자가 남긴 메모) — 인수인계의 핵심 (현재 감사 종류 범위)
+    var memoCases = CASES.filter(function (c) { return memos[c.id] && inScope(c.cat); });
     html += "<h2>2. 인계 메모 (" + memoCases.length + "건) — 확인한 문서·후임자에게 남길 말</h2>";
     if (memoCases.length) {
       html += "<table><thead><tr><th style=\"width:24%\">분야</th><th style=\"width:30%\">사례</th><th>메모</th></tr></thead><tbody>";
@@ -1040,8 +1142,8 @@
       html += '<p class="hd-none">남긴 메모가 없습니다. 각 사례의 ✎ 메모에 확인 결과를 기록하면 이 자리에 정리됩니다.</p>';
     }
 
-    // 3) 해당없음 처리 사례 + 사유
-    var naList = CASES.filter(function (c) { return naCases[c.id]; });
+    // 3) 해당없음 처리 사례 + 사유 (현재 감사 종류 범위)
+    var naList = CASES.filter(function (c) { return naCases[c.id] && inScope(c.cat); });
     html += "<h2>3. 해당없음 처리 사례 (" + naList.length + "건) — 우리 학교 무관 사유 확인 필요</h2>";
     if (naList.length) {
       html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";
@@ -1065,8 +1167,8 @@
       html += '<p class="hd-none">등록된 수감자료 목록이 없습니다.</p>';
     }
 
-    // 5) 후임자가 이어서 할 일 — 빈출(★) 미점검
-    var next = CASES.filter(function (c) { return (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c); });
+    // 5) 후임자가 이어서 할 일 — 빈출(★) 미점검 (현재 감사 종류 범위)
+    var next = CASES.filter(function (c) { return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c); });
     html += "<h2>5. 이어서 할 일 — 빈출(★) 사례 중 미완료 (" + next.length + "건)</h2>";
     if (next.length) {
       html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";

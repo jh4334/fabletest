@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<!-- 감사내비 단일 파일 배포본 (자동 생성: tools/build-single.js). 원본 수정은 prototype/ 의 분리 파일에서 하세요. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>감사내비 — 학교 종합감사 사전 자체점검 (충북)</title>
+<style>
+/* 감사내비 프로토타입 v2 — 내부망 구형 브라우저를 고려한 단순 CSS */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Malgun Gothic", "맑은 고딕", Pretendard, sans-serif;
+  background: #f4f6f9; color: #222; font-size: 15px; line-height: 1.55;
+}
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.muted { font-weight: 400; font-size: 12px; color: #667; }
+
+/* ── 헤더 ── */
+.app-header {
+  background: #1f3a5f; color: #fff; padding: 14px 20px 0;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end;
+}
+.brand h1 { font-size: 22px; cursor: pointer; }
+.brand h1:hover { opacity: .85; }
+.subtitle { font-size: 12.5px; opacity: .85; margin: 2px 0 10px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab {
+  border: 0; padding: 9px 18px; cursor: pointer; font-size: 14px;
+  background: #33507a; color: #cdd9ea; border-radius: 8px 8px 0 0;
+}
+.tab.active { background: #f4f6f9; color: #1f3a5f; font-weight: 700; }
+
+.banner {
+  max-width: 1100px; margin: 14px auto 0; padding: 10px 14px;
+  background: #fff7e0; border: 1px solid #e7c45a; border-radius: 8px; font-size: 13px;
+}
+.banner-close {
+  float: right; border: 1px solid #d8c98a; background: #fff; border-radius: 6px;
+  padding: 2px 9px; cursor: pointer; font-size: 12px; color: #6b5a1e;
+}
+
+.quickstart {
+  background: #e9f0fa; border: 1px solid #c3d4ec; border-radius: 8px;
+  padding: 9px 14px; font-size: 13.5px; color: #2a4467; margin-bottom: 12px;
+}
+
+.field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #556; }
+.field input { padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 14px; }
+
+.link-btn {
+  border: 0; background: none; padding: 0; font: inherit; font-size: 13px; cursor: pointer;
+}
+
+/* ── 탭 패널 ── */
+.tab-panel { display: none; padding-top: 14px; }
+.tab-panel.active { display: block; }
+
+/* ── 대시보드 ── */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dash-card {
+  background: #fff; border: 1px solid #dde3ec; border-radius: 12px; padding: 16px 18px;
+}
+.dash-wide { grid-column: 1 / -1; }
+.dash-card h4 { font-size: 14px; color: #1f3a5f; margin-bottom: 10px; }
+.dday-big { font-size: 44px; font-weight: 800; color: #b3261e; line-height: 1.1; }
+.dday-big.far { color: #1f6f3f; }
+.dday-big.mid { color: #b07b00; }
+.dday-big.unset { color: #99a; }
+.dday-date { font-size: 13px; color: #667; margin: 4px 0 12px; }
+.dday-mile { font-size: 13px; color: #444; background: #fdf6e3; border: 1px solid #f0e0b0; border-radius: 8px; padding: 7px 10px; margin: 0 0 12px; }
+.dday-mile:empty { display: none; }
+.score-big { font-size: 44px; font-weight: 800; color: #1f3a5f; line-height: 1.1; }
+.score-detail { font-size: 13px; color: #667; margin-top: 10px; }
+.dash-cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; cursor: pointer; }
+.dash-cat-row:hover .dc-name { color: #1f3a5f; text-decoration: underline; }
+.dc-name { width: 170px; font-size: 13.5px; flex-shrink: 0; }
+.dc-bar { flex: 1; }
+.dc-num { width: 56px; text-align: right; font-size: 12.5px; color: #667; flex-shrink: 0; }
+.todo-list { list-style: none; }
+.todo-list li {
+  padding: 8px 10px; border-bottom: 1px dashed #e2e8f1; font-size: 14px; cursor: pointer;
+}
+.todo-list li:hover { background: #f4f8ff; }
+.todo-list .todo-cat { font-size: 12px; color: #889; margin-left: 8px; }
+.todo-list .all-done { color: #1f6f3f; cursor: default; }
+
+/* ⑥ 감사 준비 일정 (D-day 역산) */
+.timeline { list-style: none; }
+.tl-item { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #e4e8ef; }
+.tl-item:last-child { border-bottom: 0; }
+.tl-date { font-size: 12.5px; color: #556; width: 90px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.tl-badge { font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 9px; flex-shrink: 0; min-width: 44px; text-align: center; }
+.tl-future .tl-badge { background: #eef1f6; color: #667; }
+.tl-soon .tl-badge { background: #fdecc8; color: #8a5a00; }
+.tl-today .tl-badge { background: #1f6f3f; color: #fff; }
+.tl-past .tl-badge { background: #eee; color: #aab; }
+.tl-task { font-size: 13.5px; color: #233; }
+.tl-past .tl-task { color: #99a; text-decoration: line-through; }
+.tl-note { font-size: 11.5px; color: #889; }
+.tl-empty { color: #889; font-size: 13px; padding: 6px 0; }
+
+/* ④ 역할 선택 */
+.role-pick { display: block; margin-bottom: 10px; }
+.role-pick span { display: block; font-size: 12px; color: #556; margin-bottom: 3px; }
+#role-filter { width: 100%; padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 13.5px; background: #fff; }
+
+/* ── 점검 탭 레이아웃 ── */
+.layout { display: flex; gap: 16px; align-items: flex-start; }
+.sidebar { width: 250px; flex-shrink: 0; position: sticky; top: 10px; }
+#search {
+  width: 100%; padding: 9px 11px; border: 1px solid #c6cedb; border-radius: 8px;
+  margin-bottom: 10px; font-size: 14px;
+}
+.cat-list { list-style: none; }
+.cat-list li {
+  background: #fff; border: 1px solid #dde3ec; border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 6px; cursor: pointer;
+}
+.cat-list li:hover { border-color: #1f3a5f; }
+.cat-list li.active { border-color: #1f3a5f; background: #e9f0fa; }
+.cat-list .cat-name { font-weight: 700; font-size: 14px; }
+.cat-list .cat-desc { font-size: 12px; color: #667; }
+.cat-list .cat-prog { font-size: 12px; color: #1f6f3f; float: right; }
+.cat-scope-note { background: #eef3fb; border: 1px solid #cdd9ea; border-radius: 8px; padding: 8px 11px; margin-bottom: 8px; font-size: 12.5px; color: #1f3a5f; list-style: none; }
+.cat-scope-note span { display: block; color: #667; font-size: 11.5px; margin-top: 2px; }
+.dday-type { display: inline-block; background: #1f3a5f; color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; }
+
+.case-area { flex: 1; min-width: 0; }
+
+/* ── 사례 카드 ── */
+.case-card {
+  background: #fff; border: 1px solid #dde3ec; border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 14px;
+}
+.case-card.is-na { opacity: .55; }
+.case-card h3 { font-size: 16px; color: #1f3a5f; display: inline; }
+.case-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.head-chips { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+.chip {
+  display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 20px;
+  background: #fde8e8; color: #a33; white-space: nowrap; font-weight: 700;
+}
+.chip.freq { background: #fff3d6; color: #9a6a00; }
+.case-detail { margin: 8px 0; color: #444; }
+.case-ex { margin: 6px 0; font-size: 13px; }
+.case-ex summary { cursor: pointer; color: #a04420; font-weight: 700; }
+.case-ex ul { margin: 6px 0 4px; padding-left: 20px; color: #555; }
+.case-ex li { margin: 3px 0; }
+.cat-na-bar { text-align: right; margin: 0 0 6px; }
+.case-basis { font-size: 13px; color: #555; background: #f2f5f9; padding: 6px 10px; border-radius: 6px; }
+.case-basis::before { content: "근거: "; font-weight: 700; color: #1f3a5f; }
+.law-link { color: #1a5fb4; text-decoration: none; border-bottom: 1px dotted #1a5fb4; }
+.law-link:hover { background: #e9f0fa; }
+.unverified { font-size: 11.5px; color: #b07b00; margin-left: 6px; }
+
+.check-list { margin-top: 10px; }
+.check-list label {
+  display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px;
+  border-radius: 6px; cursor: pointer;
+}
+.check-list label:hover { background: #f4f8ff; }
+.check-list input { margin-top: 4px; }
+.check-list label.done { color: #1f6f3f; text-decoration: line-through; }
+.case-docs { margin-top: 8px; font-size: 13px; color: #666; }
+.case-docs::before { content: "확인 문서: "; font-weight: 700; }
+
+.case-foot { margin-top: 10px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.na-toggle { color: #667; cursor: pointer; user-select: none; }
+.memo-toggle { color: #1f3a5f; cursor: pointer; user-select: none; }
+.memo-toggle.has-memo { font-weight: 700; }
+.case-memo {
+  width: 100%; margin-top: 8px; padding: 8px 10px; font-size: 13px;
+  border: 1px solid #d8c98a; background: #fffdf2; border-radius: 6px;
+  font-family: inherit; resize: vertical;
+}
+
+/* ── 보드 탭 ── */
+.board-tools details {
+  background: #fff; border: 1px solid #dde3ec; border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 10px;
+}
+.board-tools summary { cursor: pointer; font-weight: 700; color: #1f3a5f; }
+.hint { font-size: 13px; color: #667; margin: 8px 0 6px; }
+#paste-input { width: 100%; border: 1px solid #c6cedb; border-radius: 6px; padding: 8px; font-size: 13px; }
+.row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.row input[type="text"], .row input[type="date"] {
+  padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 14px;
+}
+.board-filter select, .board-filter input {
+  padding: 8px 10px; border: 1px solid #c6cedb; border-radius: 8px; font-size: 14px;
+}
+#board-search { flex: 1; min-width: 160px; }
+
+.btn {
+  padding: 8px 14px; border: 1px solid #c6cedb; background: #fff;
+  border-radius: 8px; cursor: pointer; font-size: 14px;
+}
+.btn:hover { border-color: #1f3a5f; }
+.btn.primary { background: #1f3a5f; color: #fff; border-color: #1f3a5f; }
+.btn.danger { color: #a33; }
+
+.progress-wrap { margin: 10px 0; }
+.progress-bar { background: #e2e8f1; border-radius: 20px; height: 18px; overflow: hidden; }
+.progress-fill {
+  background: #2e7d4f; height: 100%; color: #fff; font-size: 12px; text-align: center;
+  line-height: 18px; min-width: 30px; transition: width .25s; white-space: nowrap;
+}
+.progress-fill.warn { background: #b07b00; }
+.progress-fill.low { background: #b3553a; }
+.progress-label { font-size: 13px; color: #555; margin-bottom: 4px; }
+
+.board-table { width: 100%; border-collapse: collapse; background: #fff; }
+.board-table th, .board-table td { border: 1px solid #dde3ec; padding: 8px 10px; font-size: 14px; text-align: left; }
+.board-table th { background: #eef2f8; }
+.board-table select { padding: 4px 6px; border-radius: 6px; border: 1px solid #c6cedb; }
+.board-table tr.st-준비완료 td { background: #f0f9f2; }
+.board-table tr.st-해당없음 td { color: #999; }
+.del-btn { border: 0; background: none; color: #a33; cursor: pointer; font-size: 15px; }
+.empty { color: #666; text-align: center; padding: 30px 0; }
+
+/* ── 통계·보고서 탭 ── */
+.status-actions { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.status-card { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 14px 16px; }
+.status-card h4 { font-size: 14px; color: #1f3a5f; margin-bottom: 8px; }
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-row .bar-name { width: 150px; font-size: 13px; flex-shrink: 0; }
+.bar-row .bar-track { flex: 1; background: #eef1f6; border-radius: 4px; height: 16px; }
+.bar-row .bar-fill { background: #4d7cc1; height: 100%; border-radius: 4px; min-width: 2px; }
+.bar-row .bar-num { width: 36px; font-size: 12.5px; color: #667; text-align: right; }
+.status-wide { grid-column: 1 / -1; }
+
+/* ① 빈도 집계표 */
+.freq-detail summary { cursor: pointer; color: #1f3a5f; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+.freq-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+.freq-table th, .freq-table td { border: 1px solid #dde3ec; padding: 5px 8px; text-align: left; vertical-align: top; }
+.freq-table th { background: #eef2f8; color: #1f3a5f; }
+.freq-table td.num, .freq-table th.num { text-align: right; width: 52px; }
+.freq-table .fc-cat { background: #f7f9fc; font-weight: 700; white-space: nowrap; }
+.fc-total { display: block; font-weight: 400; color: #667; font-size: 11.5px; margin-top: 2px; }
+.freq-star { color: #c8801a; }
+.freq-table .freq-grand td { background: #f0f3f8; font-weight: 700; }
+
+/* ② 효과 측정 카드 */
+.effect-card { grid-column: 1 / -1; }
+.effect-nums { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 10px; }
+.effect-stat { flex: 1; min-width: 130px; background: #f2f7f3; border: 1px solid #cfe3d4; border-radius: 8px; padding: 10px 12px; }
+.es-num { display: block; font-size: 22px; font-weight: 800; color: #1f6f3f; }
+.es-num small { font-size: 13px; font-weight: 700; }
+.es-lbl { display: block; font-size: 12px; color: #557; margin-top: 2px; }
+.spark-wrap { margin: 4px 0 8px; }
+.sparkline { display: block; width: 100%; max-width: 360px; height: 56px; background: #f7faf8; border: 1px solid #e0ece2; border-radius: 6px; }
+.spark-axis { display: flex; justify-content: space-between; max-width: 360px; font-size: 11px; color: #889; margin-top: 2px; }
+
+.app-footer {
+  max-width: 1100px; margin: 20px auto; padding: 0 16px;
+  display: flex; justify-content: space-between; font-size: 12px; color: #889; gap: 10px;
+}
+
+/* ── 인쇄 ── */
+.print-only { display: none; }
+@media print {
+  .no-print, main, .banner { display: none !important; }
+  .print-only { display: block; }
+  body { background: #fff; font-size: 12px; }
+  .print-only h1 { font-size: 20px; text-align: center; margin: 10px 0 4px; }
+  .print-only h2 { font-size: 14px; margin: 16px 0 6px; border-left: 4px solid #1f3a5f; padding-left: 8px; }
+  .print-only table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  .print-only th, .print-only td { border: 1px solid #999; padding: 4px 7px; font-size: 11px; text-align: left; }
+  .print-only th { background: #eee; }
+  .print-meta { font-size: 11.5px; color: #444; text-align: center; margin-bottom: 14px; }
+  .print-only .sign-table { width: 50%; margin-left: auto; }
+  .print-only .sign-table th, .print-only .sign-table td { text-align: center; }
+  .print-only .sign-table td { height: 46px; }
+  .print-only tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-only h2 { break-after: avoid; page-break-after: avoid; }
+  .print-only thead { display: table-header-group; }
+  .ok { color: #1f6f3f; font-weight: 700; }
+  .ng { color: #a33; font-weight: 700; }
+  .na { color: #888; }
+  .print-memo { color: #555; }
+  .print-effect { font-size: 11.5px; color: #1f3a5f; background: #f2f7f3; border: 1px solid #cfe3d4; border-radius: 6px; padding: 6px 10px; margin: 0 0 12px; }
+  .print-freq td.num { text-align: right; }
+  .print-freq .freq-grand td { background: #eee; font-weight: 700; }
+  .hd-none { font-size: 11px; color: #888; margin: 2px 0 8px; }
+}
+
+@media (max-width: 800px) {
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; position: static; }
+  .status-grid, .dash-grid { grid-template-columns: 1fr; }
+  .dc-name { width: 110px; }
+}
+
+</style>
+</head>
+<body>
+
+<header class="app-header no-print">
+  <div class="brand">
+    <h1 id="home-btn" role="button" tabindex="0" title="대시보드로 이동">🧭 감사내비</h1>
+    <p class="subtitle">학교 종합감사 사전 자체점검 · 충청북도교육청 기준</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" aria-selected="true" data-tab="dash">대시보드</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="check">분야별 자체점검</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="board">수감자료 보드</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="stats">통계·보고서</button>
+  </nav>
+</header>
+
+<div id="seed-banner" class="banner no-print">
+  ℹ️ 수록 사례는 충청북도교육청 감사관 발간 <b>『2025년도 자체감사 사례집』·『분야별 감사 착안사항』·『감사실무매뉴얼』</b>을
+  분석해 구성했습니다. 처분 결과는 사례집 방침에 따라 생략되었으며, 최신 규정은 원문을 확인하세요.
+  <button id="banner-close" class="banner-close" type="button" aria-label="안내 닫기">닫기 ✕</button>
+</div>
+
+<main>
+  <!-- ━━━ 탭 0: 대시보드 ━━━ -->
+  <section id="tab-dash" class="tab-panel active">
+    <p class="quickstart no-print">사용 순서&nbsp; ① 아래에 <b>감사 예정일</b> 입력 → ② <b>[분야별 자체점검]</b>에서 점검 체크 → ③ <b>[통계·보고서]</b>에서 결과표 인쇄</p>
+    <div class="dash-grid">
+      <div class="dash-card dash-dday">
+        <h4>감사 D-day</h4>
+        <div id="dday-big" class="dday-big">D-?</div>
+        <div id="dday-date" class="dday-date"></div>
+        <div id="dday-mile" class="dday-mile"></div>
+        <div class="row no-print">
+          <label class="field"><span>학교명</span><input type="text" id="set-school" placeholder="예: 청주○○초"></label>
+          <label class="field"><span>감사 예정일</span><input type="date" id="set-date"></label>
+          <label class="field"><span>감사 종류</span>
+            <select id="set-type"></select>
+          </label>
+          <button id="save-settings" class="btn primary">저장</button>
+        </div>
+      </div>
+      <div class="dash-card">
+        <h4>종합 준비도</h4>
+        <div id="dash-score" class="score-big">0%</div>
+        <div id="dash-score-detail" class="score-detail"></div>
+      </div>
+      <div class="dash-card dash-wide">
+        <h4>분야별 점검 현황 <span class="muted">— 미점검이 많은 분야부터 표시됩니다</span></h4>
+        <div id="dash-cats"></div>
+      </div>
+      <div class="dash-card dash-wide">
+        <h4>감사 준비 일정 <span class="muted">— 감사실무매뉴얼 기준 D-day 역산</span></h4>
+        <ol id="dash-timeline" class="timeline"></ol>
+      </div>
+      <div class="dash-card dash-wide">
+        <h4>이번 주 추천 점검 <span class="muted">— 빈출(★) 사례 중 미완료 항목</span></h4>
+        <ul id="dash-todo" class="todo-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ 탭 1: 분야별 자체점검 ━━━ -->
+  <section id="tab-check" class="tab-panel">
+    <div class="layout">
+      <aside class="sidebar no-print">
+        <label class="role-pick"><span>담당 역할</span>
+          <select id="role-filter">
+            <option value="">전체 분야 보기</option>
+          </select>
+        </label>
+        <input type="search" id="search" placeholder="사례·규정 검색 (예: 초과근무, 수의계약)">
+        <ul id="cat-list" class="cat-list"></ul>
+      </aside>
+      <div id="case-area" class="case-area"></div>
+    </div>
+  </section>
+
+  <!-- ━━━ 탭 2: 수감자료 준비 보드 ━━━ -->
+  <section id="tab-board" class="tab-panel">
+    <div class="board-tools no-print">
+      <details id="paste-box">
+        <summary>＋ 수감자료 목록 붙여넣기 (엑셀에서 복사 → 붙여넣기)</summary>
+        <p class="hint">엑셀에서 <b>항목명 | 담당부서 | 담당자</b> 열을 복사해 아래에 붙여넣고 [가져오기]를 누르세요. 항목명만 있어도 됩니다.
+        처음이라면 <b>[엑셀 양식 내려받기]</b>로 양식 파일을 받아 작성한 뒤 복사해 오세요.</p>
+        <textarea id="paste-input" rows="6" placeholder="예)&#10;최근 3년 학교회계 세입세출 결산서&#9;행정실&#9;김○○&#10;학업성적관리위원회 회의록&#9;교무부&#9;이○○"></textarea>
+        <div class="row">
+          <button id="import-btn" class="btn primary">가져오기</button>
+          <button id="official-btn" class="btn">기본 준비물 불러오기 (감사실무매뉴얼 기준)</button>
+          <button id="template-btn" class="btn">엑셀 양식 내려받기</button>
+          <button id="sample-btn" class="btn">예시 목록으로 체험</button>
+          <button id="board-clear" class="btn danger">전체 삭제</button>
+        </div>
+      </details>
+      <div class="row board-filter">
+        <select id="board-status-filter">
+          <option value="">전체 상태</option>
+          <option>미시작</option><option>진행중</option><option>준비완료</option><option>해당없음</option>
+        </select>
+        <input type="search" id="board-search" placeholder="항목·담당자 검색">
+        <button id="board-csv" class="btn">CSV 내보내기</button>
+      </div>
+    </div>
+    <div id="board-progress" class="progress-wrap"></div>
+    <table class="board-table" id="board-table">
+      <thead><tr><th style="width:44%">수감자료 항목</th><th>담당부서</th><th>담당자</th><th>상태</th><th class="no-print"></th></tr></thead>
+      <tbody id="board-body"></tbody>
+    </table>
+    <p id="board-empty" class="empty">아직 등록된 수감자료가 없습니다. 감사 공문의 수감자료 목록을 붙여넣어 시작하세요.</p>
+  </section>
+
+  <!-- ━━━ 탭 3: 통계·보고서 ━━━ -->
+  <section id="tab-stats" class="tab-panel">
+    <div class="status-actions no-print">
+      <button id="print-report" class="btn primary">📄 점검 결과 보고서 인쇄 / PDF</button>
+      <button id="handover-report" class="btn">🔁 인수인계 보고서</button>
+      <button id="check-csv" class="btn">점검 결과 CSV</button>
+      <button id="backup-btn" class="btn">💾 백업 파일 저장</button>
+      <button id="restore-btn" class="btn">📂 백업 불러오기</button>
+      <input type="file" id="restore-file" accept=".json" hidden>
+      <button id="reset-checks" class="btn danger">점검 초기화</button>
+    </div>
+    <p class="hint no-print">백업 파일(JSON)로 다른 PC·다른 담당자에게 점검 상태를 그대로 넘길 수 있습니다(인수인계).</p>
+    <div id="status-area"></div>
+  </section>
+</main>
+
+<!-- 인쇄 전용 보고서 -->
+<div id="print-area" class="print-only"></div>
+
+<footer class="app-footer no-print">
+  <span id="meta-line"></span>
+  <span>모든 데이터는 이 PC 브라우저에만 저장됩니다 (서버 전송 없음)</span>
+</footer>
+
+<script>
+/* ============================================================
+   감사내비 데이터 — 충청북도교육청 감사관 공식 자료 기반
+   출처:
+   · 2025년도 자체감사 사례집 (감사관, 2026. 3.)
+   · 2025년도 분야별 감사 착안사항 (감사관, 2025. 3.)
+   · 2025년도 개정 감사실무매뉴얼 (감사관)
+   주의: 사례집은 처분 결과를 생략하므로 disposition은 비워 둠.
+         freq = 사례집에 수록된 지적사례 건수(3건 이상 ★ 빈출 표시).
+   ============================================================ */
+
+const DATA_META = {
+  region: "충청북도교육청",
+  target: "학교(초·중·고·유, 사립 포함) 종합감사 대비",
+  updated: "2026-06-11",
+  status: "2025년도 자체감사 사례집·분야별 감사 착안사항·감사실무매뉴얼 분석 반영"
+};
+
+const CATEGORIES = [
+  { id: "gyomu", name: "교무·학사", desc: "학교규칙·교육과정·성적·생활기록부·학폭·운동부·학운위 등" },
+  { id: "bokmu", name: "인사·복무·출장", desc: "계약제교원·휴가·유연근무·외부강의·출장·여비·행동강령" },
+  { id: "sudang", name: "보수·수당", desc: "각종 수당·성과상여금·육아휴직·시간외근무 등 보수 전반" },
+  { id: "gyeyak", name: "계약·물품", desc: "용역·물품 계약, 물품·도서 관리" },
+  { id: "chehum", name: "현장체험학습", desc: "현장체험학습·수학여행 운영" },
+  { id: "hoegye", name: "학교회계·예산", desc: "예산 편성·집행·업무추진비·법인카드·발전기금·세입세출외현금" },
+  { id: "bangkwa", name: "방과후학교·돌봄", desc: "방과후학교·돌봄 운영, 강사 관리" },
+  { id: "geupsik", name: "급식", desc: "급식 운영·안전·식재료 구매·시설기구" },
+  { id: "jeongbo", name: "개인정보·정보화", desc: "개인정보 보호, 홈페이지, 보안·정보화" },
+  { id: "sisul", name: "시설·안전", desc: "시설공사 계약·집행, 화재 예방, 안전관리" },
+  { id: "sahak", name: "사립학교·법인", desc: "사립학교·학교법인·사립유치원만 해당 — 공립은 '분야 전체 해당없음' 처리" }
+];
+
+const CASES = [
+  {
+    id: "gyomu-01", cat: "gyomu", verified: true, freq: 3,
+    title: "학교규칙 및 학생생활규정",
+    detail: "학교규칙에는 수업연한·학기·휴업일, 입학, 포상·징계, 용모·소지품 검사 등 학생의 학교생활에 관한 사항과 학생자치활동, 조기진급·졸업·진학 평가위원회 및 의무교육관리위원회 구성·운영 사항을 정하여야 함. 학교규칙 및 제규정은 개정 내용이 없더라도 매년 1회 이상 학교알리미 사이트에 공시하여야 함.",
+    disposition: "",
+    basis: "｢초중등교육법 시행령｣ 제9조, 제25조의2, 제44조, 제67조, 제92조 / ｢조기진급 등에 관한 규정｣ 제3조, 제4조, 제5조 / ｢교원의 학생생활지도에 관한 고시 해설서 적용 학생생활규정 예시 안내, 충청북도교육청｣ / ｢교육관련기관의 정보공개에 관한 특례법｣ 제5조",
+    checks: ["학교 규칙 내용이 법령, 교육부 및 우리교육청의 지침 등에 어긋나지 않고 적정한가?", "학생생활규정에 징계, 징계 외 지도방법, 교육목적상 필요한 소지품 검사 등 학생지도 방법이 적합하게 반영되어 있는가?"],
+    docs: ["학교 규칙 및 학생생활규정 제·개정 관련 자료"],
+    examples: ["학교규칙 개정 시 학급편제·학생정원, 학업성적관리위원회 구성, 학업중단숙려제 운영, 각종 규정 등을 상위 법령 및 지침에 맞게 현행화하지 않음", "학교규칙 개정 시 협의록·심의 결과·확정안 결재 등 개정 절차를 소홀히 하고 개정된 학교규칙을 공시하지 않음", "담당자가 학교규칙 개정 시 의무취학·학적·학생징계 등 변경사항을 반영하지 않고, 의무교육관리위원회와 조기진급·졸업·진학 평가위원회를 규정과 다르게 개정함"]
+  },
+  {
+    id: "gyomu-02", cat: "gyomu", verified: true, freq: 3,
+    title: "교육과정 편성·운영",
+    detail: "학교교육과정은 민주적인 절차와 교육과정위원회 심의를 거쳐 편성·운영하여야 하며, 교과와 창의적 체험활동 수업시수는 연간 34주(학기당 17주) 이상 확보하고 결·보강 대책을 사전에 마련하여 교육과정 운영의 정상화를 기하여야 함.",
+    disposition: "",
+    basis: "｢초·중등학교 교육과정, 교육부｣ / ｢충청북도 교육과정 총론, 충청북도교육청｣ / ｢충청북도 초·중·고등학교 교육과정 편성운영 지침, 충청북도교육청｣",
+    checks: ["교육과정 편성 시 지침을 이행하는가?", "법정 수업일수 및 수업시수를 준수하는가?", "결강에 대한 보강수업 대책 강구 및 수업 결손의 방지 노력을 하는가?", "교육과정위원회 조직 및 운영은 적정한가?", "수준별 교육과정 운영은 적정한가?"],
+    docs: ["학교교육과정운영계획", "교육과정위원회 회의록, 교육과정 편성 설문지", "학교 결보강 계획 및 일지(전자)"],
+    examples: ["유치원 교육과정 운영계획 수립 시 학부모 설문조사 결과와 실태분석 결과를 반영하지 않고 수년간 동일한 운영계획으로 수립·운영함", "학교교육과정 편성표(시간 배당), 교과(군)별 20% 범위 내 시수 증감방안, 창의적 체험활동 내용 등을 학교운영위원회 심의를 받지 않음", "유치원 운영계획 수립 시 학부모 설문조사 결과를 반영하지 않고 실태분석 및 반영 내용을 3년간 동일하게 작성함"]
+  },
+  {
+    id: "gyomu-03", cat: "gyomu", verified: true, freq: 7,
+    title: "학업성적 관리",
+    detail: "학업성적 평가·관리의 객관성·공정성·투명성을 확보하여야 하며, 평가계획은 학년(학기)초에 학생·학부모에게 공개한 후 평가하고, 평가·관리 관련 오류의 수정·보완 시에는 반드시 관련 절차를 거쳐 성적정정대장에 기록하고 결재를 얻어야 함.",
+    disposition: "",
+    basis: "｢중(고등)학교 학업성적관리시행지침, 충청북도교육청｣ / ｢초등(중, 고등)학교 교육과정 편성·운영 지침, 충청북도교육청｣",
+    checks: ["학업성적관리규정은 지침에 맞게 제정하여 운영하는가?", "학업성적관리위원회는 적정하게 조직하여 운영하는가?", "지필평가 시험실 감독관은 공정한 감독 업무를 수행하는가?", "성적채점은 정확하게 하는가?", "문제출제의 오류, 전년도 기출문제 재출제 등이 있는가?", "문항별 배점, 채점은 정확한가? (난이도에 따른 배점 부여 등)", "평가결과 정답률, 내용, 타당도 등을 분석하여 환류하는가?", "결석 사유에 따른 점수 부여는 적정한가?", "수행평가 계획 사전예고 및 수행평가 절차를 준수하는가?", "수행평가 후 학생의 이의 신청 기회 부여 및 적절한 조치를 하는가?", "수행평가 문항공개 및 평가계획을 사전에 안내하는가?", "수행평가 기준에 맞게 배점을 부여하는가?"],
+    docs: ["학교 학업성적관리규정, 학업성적관리위원회 회의록", "성적정정대장", "전년도 평가문제 및 당해년도 평가문제", "학생답안지 및 성적처리 자료", "평가관련 교과(학년) 협의록 및 평가계획서 등"],
+    examples: ["학년별(교과별) 평가계획을 공시하면서 평가도구(평가할 교과서 쪽수)를 포함하여 공개하는 등 학생평가 정보공시를 부적정하게 함", "수행평가에서 배점 기준에 없는 점수를 부여하고, 학년 전체 학생에게 만점의 동일 점수를 부여함", "기말고사 시 별도 고사실에 타과목 시험지를 오배부하여 해당 학년 전체 학생이 재시험을 치르게 함", "정기고사 감독 시 일부 학생에게 문제지를 17분 늦게 배부하고 추가 시간을 5분만 제공하여 재시험을 치르게 함", "출제 오류로 복수정답 처리하였음에도 이를 성적정정대장에 기록하지 않음", "출제 문항 수정으로 시험지를 교체하면서 수정 전·후 시험지를 한 봉투에 함께 넣어 일부 학생이 수정 전 문제지로 응시하여 재시험을 실시함", "수행평가 계획 변경 시 학업성적관리위원회 심의를 받지 않고 변경된 평가계획을 실시 전에 학생·학부모에게 공개하지 않음"]
+  },
+  {
+    id: "gyomu-04", cat: "gyomu", verified: true, freq: 7,
+    title: "학교(유치원) 생활기록부 기록·관리",
+    detail: "학교(유치원)생활기록부는 전자기록생산시스템을 통해 전자적으로 생산·관리하고 학적·출결·창의적 체험활동·교과학습발달상황 등을 실제 사실에 따라 정확하게 입력하여야 하며, 학교폭력 조치사항 기록의 기재·삭제 등 보존·관리 기준을 준수하여야 함.",
+    disposition: "",
+    basis: "｢학교생활기록부 작성 및 관리지침, 교육부 훈령｣ / ｢학교생활기록부 기재요령, 교육부｣",
+    checks: ["출결상황 관리는 적정한가?", "수상경력, 자격증 및 인증 취득상황의 기록은 적정한가?", "진로 희망사항 기록 및 관리는 적정한가?", "창의적체험활동 상황 및 교내·외 봉사활동실적, 교과학습 발달상황, 독서활동 상황, 행동특성 및 종합의견의 평가 및 기록 실태는 적정한가?", "학교생활기록부 보존 및 관리는 적정한가?", "학교생활기록부 정정대장 기재 및 관리는 적정한가?"],
+    docs: ["수상대장, 출결통계표, 결석계", "봉사활동 계획서 및 확인서", "학교생활기록부(전자)", "학교생활기록부 정정대장(전자, 수기)"],
+    examples: ["학교생활기록부 41건을 정정한 후 정정대장과 함께 준영구 보관하여야 하는 증빙서류를 분실하여 확인할 수 없게 함", "창의적체험활동 동아리활동 특기사항을 학급 내 다수 학생에 대하여 동일한 문장으로 일괄 작성함", "법정 감염병 출석인정결석을 질병결석으로 처리하고, 결석신고서·증빙서류 없이 질병결석을 처리하는 등 출결상황 관리를 부적정하게 함", "의사 진단서가 첨부된 질병 결석을 학교장 승인 없이 기타 결석으로 처리하는 등 학생 출결 관리를 부적정하게 함", "졸업생 학생정보 정정 시 4단 결재 없이 정정대장을 작성·정정하고 정정 후 수기 학교생활기록부를 첨부하지 않음", "정정대장 결재 시 학업성적관리위원회 위원이 아닌 행정실장을 결재 과정에 포함하는 등 4단 결재 절차를 위반함", "교외체험학습 신청서 및 결과보고서를 누락하여 출결처리의 적정성 여부를 확인할 수 없게 함"]
+  },
+  {
+    id: "gyomu-05", cat: "gyomu", verified: true, freq: 3,
+    title: "개별화교육계획 운영",
+    detail: "각각의 특수교육대상자에 대해 매 학년 시작일부터 2주일 이내에 개별화교육지원팀을 구성하고, 매 학기 시작일부터 30일 이내에 교육목표·교육방법·교육내용·특수교육 관련서비스 등이 포함된 개별화교육계획을 작성하여야 함.",
+    disposition: "",
+    basis: "｢장애인 등에 대한 특수교육법｣ / ｢장애인 등에 대한 특수교육법 시행규칙｣ / ｢학교별 개별화교육지원팀 운영 규칙｣",
+    checks: ["특수교육대상별 개별화교육지원팀 구성 운영은 적정한가?", "특수교육대상별 개별화교육계획은 적정하게 수립되었는가?", "특수교육대상자의 학업성취도 평가를 실시하고 그 결과를 보호자에게 통보하고 있는가?"],
+    docs: ["특수교육대상별 개별화교육계획", "개별화교육지원팀 운영 회의록"],
+    examples: ["특수교육운영위원회 위원 변경 위촉 시 임기를 전임 위원의 잔여 임기로 하지 않고, 위원회 심의 결과를 교육장에게 보고하지 않는 등 위원회 구성·운영을 부적정하게 함", "개별화교육지원팀 회의를 집단형 회의로 진행하고 학기 시작 30일 이후에 학부모 동의를 받는 등 학부모 참여를 보장하지 않았으며, 나이스에 회의록·승인서를 기한 내 등재하지 않음", "개별화교육계획의 장기·단기목표 평가준거는 수립하였으나 그에 따른 평가결과를 기록하지 않는 등 개별화교육계획 평가를 부적정하게 함"]
+  },
+  {
+    id: "gyomu-06", cat: "gyomu", verified: true, freq: 2,
+    title: "시상 관리",
+    detail: "학생 시상은 학교생활기록부 기재요령에 따른 절차대로 운영하여야 하며, 학교교육계획에 연간 대회 및 수상내용 등의 실시계획을 기재하고 대회 실시 이전에 대회 요강을 계획에 기재한 공개 방식대로 공개하여야 함.",
+    disposition: "",
+    basis: "｢학교생활기록부 작성 및 관리지침, 교육부 훈령｣ / ｢학교생활기록부 기재요령, 교육부｣ / ｢단위 학교 시상 규정｣",
+    checks: ["학교생활기록부 기재요령에 따라 적절하게 운영 및 관리 되었는가?", "학교교육계획에 연간 대회 및 수상내용 등의 실시계획(공개 방식 포함)을 기재하고, 대회 실시 이전에 대회 요강을 학교교육계획에 기재한 공개 방식대로 공개하였는가?"],
+    docs: ["학교교육계획서", "학교생활기록부", "학교생활기록부 정정대장"],
+    examples: ["학교교육계획서상 학교홈페이지에 공개하기로 한 교내대회 다수 건을 홈페이지에 공개하지 않음", "학교생활기록부 수상경력에 대회운영 계획과 상장의 대회명이 일치하지 않게 입력함"]
+  },
+  {
+    id: "gyomu-07", cat: "gyomu", verified: true, freq: 1,
+    title: "학생 정원 외 관리",
+    detail: "취학의무의 면제·유예는 보호자의 신청으로 학교장이 결정하되 유예는 1년 이내로 하여야 하며, 장기 결석자는 결석 사유 확인, 가정 방문, 출석 독촉 문서 발송, 읍·면·동장에 대한 취학독려 협조 요청 등 정원 외 관리 절차를 준수하여야 함.",
+    disposition: "",
+    basis: "｢초·중등교육법｣ 제14조, 같은 법 시행령 제28조 / ｢초등학교 학적처리 매뉴얼, 충청북도교육청｣",
+    checks: ["의무교육자 유예처리 절차가 적정한가?"],
+    docs: ["의무취학 관련 자료", "정원외 관리 자료"],
+    examples: ["담당자가 의무교육관리위원회 자체 규정 및 계획을 수립하지 않은 채 취학유예 처리 안건 심의 등 회의를 부적정하게 운영함"]
+  },
+  {
+    id: "gyomu-08", cat: "gyomu", verified: true, freq: 2,
+    title: "봉사활동 운영",
+    detail: "봉사활동은 교육과정의 일환으로 실시한 활동과 개인 계획에 의한 활동을 인정하며 사전교육을 실시하여야 하고, 개인 계획에 의한 봉사활동은 계획서를 사전 제출하여 학교장 승인을 받은 후 실시하고 그 실적을 학교생활기록부에 기재하여야 함.",
+    disposition: "",
+    basis: "｢학생봉사활동 운영 기본 계획, 충청북도교육청｣ / ｢학교 봉사활동 운영계획서｣",
+    checks: ["봉사활동 운영 계획은 적정한가?", "봉사활동 운영 계획에 대한 사전 교육을 실시하였는가?", "개인 계획에 의한 봉사활동의 운영 절차는 적정한가?", "봉사활동 실적의 학교생활기록부 기재는 적정한가?"],
+    docs: ["봉사활동 운영 계획서", "개인봉사활동 계획서 승인 자료", "학교생활기록부"],
+    examples: ["결석과 교외체험학습으로 봉사활동에 참여하지 않은 학생에게 봉사활동 실적을 기재하여 생활기록부에 반영함", "학교봉사활동추진위원회를 수년간 구성·운영하지 않음"]
+  },
+  {
+    id: "gyomu-09", cat: "gyomu", verified: true, freq: 3,
+    title: "학교폭력 예방 및 생활지도",
+    detail: "학교장은 학부모가 구성원의 3분의 1 이상 포함된 학교폭력 전담기구를 구성하고, 학교폭력신고 접수대장과 가해학생 조치사항 관리대장을 기록·관리하며, 사안접수·보고·조사·학교장 자체해결·조치사항 삭제 심의 등 처리 절차를 준수하여야 함.",
+    disposition: "",
+    basis: "｢학교폭력예방법｣ 및 같은 법 시행령 / ｢학생생활지도 기본계획, 충청북도교육청｣",
+    checks: ["학교폭력 전담기구 구성과 운영은 적정한가?", "학교폭력 관련 대장은 비치하는가?", "학교폭력 가해학생 조치사항 기재·삭제 관리가 이루어지는가?", "학교폭력 및 성폭력예방교육을 실시하는가?", "학교폭력 실태조사는 실시하는가?", "사안발생 시 보고 및 처리결과는 적정한가?", "사안조사 및 긴급조치는 적정한가?", "학교장 자체해결 절차 및 운영은 적정한가?", "피해학생·가해학생 조치는 적정한가?", "학교생활기록부 기재 및 기재유보는 적정한가?"],
+    docs: ["학교폭력예방교육계획 및 추진 실적", "학교생활지도계획", "학교폭력전담기구 구성 및 운영 자료 등"],
+    examples: ["학교폭력 사안을 신고접수 또는 인지 후 48시간 이내에 교육청에 보고하지 않거나 최대 15일 지연하여 보고함", "삭제 심의 대상이 될 수 없는 졸업예정 학생의 학교폭력 가해 조치사항 기록을 심의 절차를 거쳐 삭제함", "교직원 대상 학교폭력 예방교육을 학기별로 실시하지 않거나 한 학기 교육을 누락함"]
+  },
+  {
+    id: "gyomu-10", cat: "gyomu", verified: true, freq: 3,
+    title: "학교 운동부 운영",
+    detail: "학교운동부 운영계획은 학교운영위원회 심의를 받아 운영하여야 하며, 학생선수 월 1회 이상 개인별 상담, 연간 3시간 이상 인권·폭력 및 성폭력 예방교육 실시, 대회 참가비용·전지훈련 비용의 홈페이지 공개 등으로 운영의 투명성을 확보하여야 함.",
+    disposition: "",
+    basis: "｢학교체육 진흥법｣ 제11조, 제12조 / ｢학교체육 진흥법 시행령｣ 제3조 / ｢순회코치 관리지침, 충청북도교육청｣ / ｢학교체육 주요업무 계획, 충청북도교육청｣ / ｢방과후학교 운영 가이드라인｣",
+    checks: ["학교체육소위원회를 구성·운영하고 있는가?", "수업결손에 대한 보충계획을 수립·실시하였는가?", "학생 선수에 대한 훈련 계획 및 지도 관리는 적정한가?", "운동부 운영 계획은 학교운영위원회의 심의를 받았는가?", "학교 운동부 운영 경비 집행은 적정하고, 각종 대회 참가 경비 등은 홈페이지에 공개하였는가?"],
+    docs: ["학교 운동부 운영 계획", "학생 선수 관리 계획", "학생 선수 훈련 계획서 및 훈련일지 등"],
+    examples: ["학교운동부 운영계획을 학교운영위원회 심의 없이 또는 지연 심의로 운영하고, 운동부 운영경비를 적기에 공개하지 않고 일괄 등록함", "학생건강평가 결과 미통보, 저체력·비만 학생 대상 건강체력교실 미운영, 운동부 운영계획 미수립 및 학교운영위원회 미심의 등 학교체육 업무를 부적정하게 운영함", "학교운동부지도자가 학생선수 상담일지를 학생별로 누가 기록하지 않고 훈련일지에 구체적 내용 없이 부실하게 작성함"]
+  },
+  {
+    id: "gyomu-11", cat: "gyomu", verified: true, freq: 2,
+    title: "성폭력 예방 교육",
+    detail: "학교는 교직원을 대상으로 성희롱·성매매·성폭력·가정폭력 예방교육을 각각 연 1회, 1시간 이상 실시하여야 함.",
+    disposition: "",
+    basis: "｢양성평등기본법｣ 제31조 및 같은 법 시행령 제20조 / ｢성매매방지 및 피해자보호 등에 관한 법률｣ 제5조 및 같은 법 시행령 제2조 / ｢성폭력방지 및 피해자보호 등에 관한 법률｣ 제5조 및 같은 법 시행령 제2조 / ｢가정폭력방지 및 피해자보호 등에 관한 법률｣ 제4조의3 및 같은 법 시행령 제1조의2 / ｢충청북도교육청 성희롱·성매매·성폭력예방 교육 지침｣",
+    checks: ["성희롱·성매매·성폭력예방 교육 계획을 수립하였는가?", "법정 예방교육 시간을 준수하였는가?"],
+    docs: ["성폭력예방교육 계획 및 실시 현황"],
+    examples: ["일부 직원을 누락하여 예방교육을 실시하고, 누락된 직원에게 별도 교육 없이 교육자료 배포로 대신함", "예방교육 미참여자에 대한 추가 교육계획을 수립·실시하지 않아 법정 예방교육 전부 또는 일부를 이수하지 않은 교직원이 발생함"]
+  },
+  {
+    id: "gyomu-12", cat: "gyomu", verified: true, freq: 1,
+    title: "유아 건강검진",
+    detail: "유치원장은 유아에 대하여 1년에 한 번 이상 건강검진을 실시하고 치료가 필요한 유아는 보호자와 협의하여 필요한 조치를 하여야 하며, 건강검진 결과를 생활기록부에 기록하여 관리하여야 함.",
+    disposition: "",
+    basis: "｢유아교육법｣ 제17조 / ｢유아교육법 시행규칙｣ 제2조의6",
+    checks: ["연 1회 이상 건강검진을 실시하였는가?", "치료가 필요한 유아에게 필요한 조치를 취하였는가?"],
+    docs: ["건강검진 관련 서류", "건강검진 결과통보서(확인서)"],
+    examples: ["유아 건강검진을 실시하지 않은 채 보호자 동의·운영위원회 자문 절차 없이 다른 연도의 영유아건강검진 결과서를 제출받아 생활기록부에 기재하여 당해 연도 건강검진 실시 여부를 확인할 수 없게 함"]
+  },
+  {
+    id: "gyomu-13", cat: "gyomu", verified: true, freq: 3,
+    title: "교원능력개발평가 운영",
+    detail: "교원능력개발평가는 교원 상호 간 평가 및 학생·학부모 만족도 조사 등의 방법으로 실시하며, 평가관리위원회는 5인 이상 11인 이하로 구성하되 교원이 아닌 위원 비율을 50% 이상으로 하고 위원장은 호선하여야 함.",
+    disposition: "",
+    basis: "｢교원 등의 연수에 관한 규정｣ / ｢교원능력개발평가 실시에 관한 훈령｣ / ｢충청북도교육청 교원능력개발평가 시행에 관한 규칙｣",
+    checks: ["단위학교 평가관리위원회 운영규정을 학교운영위원회에서 심의하고 있는가?", "교원능력개발평가 운영계획 등 평가관리위원회 심의사항을 준수하고 있는가?", "교원능력개발평가 운영계획 및 문항을 공지하고 있는가?", "교원, 학생 및 학부모를 대상으로 연수 및 홍보를 하고 있는가?", "교원능력개발평가관리위원회 구성 및 운영을 관련 법령에 맞게 준수하는가?", "교원능력개발평가관리위원회 회의록 및 결과 보고가 잘 이루어지고 있는가?"],
+    docs: ["단위학교 교원능력개발평가 운영 규정", "교원능력개발평가 운영 계획 및 회의록", "교원능력개발평가 연수 및 홍보 자료"],
+    examples: ["평가관리위원회 운영 규정을 수립하지 않고 위원 구성 관련 기록물과 위원회 결과 보고 없이 운영하였으며, 평가 계획과 결과를 위원회 심의 없이 처리함", "평가관리위원회 규정에 교감을 당연직 위원장으로 정하는 등 위원장 호선 원칙과 교원이 아닌 위원 비율 50% 이상 구성 기준을 지키지 않음", "평가관리위원회 규정을 학교운영위원회 심의 없이 내부결재 붙임으로 첨부하여 개정함"]
+  },
+  {
+    id: "gyomu-14", cat: "gyomu", verified: true, freq: 2,
+    title: "법정 감염병 등 출석인정처리",
+    detail: "학교는 감염병의 위험으로부터 학생과 교직원을 보호하고 정상적인 학교 기능을 유지하기 위해 감염병 발생 시 처리 절차를 준수하여 출결을 처리하여야 함.",
+    disposition: "",
+    basis: "｢학교보건법｣ / ｢감염병 예방 및 관리에 관한 법률｣ / ｢유아 감염병 예방·위기대응 매뉴얼｣ / ｢교육부 감염병 위기대응 실무매뉴얼｣",
+    checks: ["감염병 예방 계획을 수립하였는가?", "감염병 발생 시 처리 절차를 준수하여 운영하고 있는가?"],
+    docs: ["출석부 및 학교생활기록부 기재", "출석인정처리 내부결재 및 의사진단서 등 확인 자료"],
+    examples: ["법정전염병으로 결석한 학생을 질병결석으로 처리하고, 질병결석 처리 시 결석계 및 증빙서류를 누락함", "유행성 독감으로 3일간 결석하고 진료확인서를 첨부한 결석계를 제출하였음에도 출석인정 결석 일수를 2일로 처리함"]
+  },
+  {
+    id: "gyomu-15", cat: "gyomu", verified: true, freq: 2,
+    title: "인성교육 및 효행교육 운영",
+    detail: "학교교육과정과 연계하여 인성교육계획을 수립하고 학교운영위원회의 심의를 받아야 함.",
+    disposition: "",
+    basis: "｢인성교육진흥법｣ 제10조 / ｢인성교육진흥법 시행령｣ 제11조 / ｢충청북도교육청 효행교육 진흥 조례｣ / ｢인성교육 시행 기본계획, 충청북도교육청｣",
+    checks: ["인성교육계획 수립 여부", "인성교육계획을 학교운영위원회에서 심의 받았는지 여부", "효행교육계획 수립 여부(인성교육계획 내 포함 가능)"],
+    docs: ["학교 인성교육 기본계획", "학교운영위원회 회의록"],
+    examples: ["인성교육 및 효행교육 업무를 추진하면서 인성교육 계획과 효행교육 계획을 수립하지 않음", "학생·학부모·교원 의견 수렴과 학교운영위원회 심의를 거친 인성교육 계획을 수립하지 않음"]
+  },
+  {
+    id: "gyomu-16", cat: "gyomu", verified: true, freq: 2,
+    title: "학교운영위원회 운영",
+    detail: "특별한 사유 없이 3회 연속 회의에 불참한 위원은 당연 퇴임 처리해야 하고, 회의 개최 공고와 회의록(일시·장소·참석자·안건·발언요지·결정사항 포함)을 학교 홈페이지 등에 공개해야 함.",
+    disposition: "",
+    basis: "「충청북도립학교운영위원회 설치·운영에 관한 조례」 / 학교(유치원)운영위원회 운영 계획 알림(충청북도교육청)",
+    checks: ["특별한 사유 없이 3회 연속 회의에 불참한 위원에 대해 당연 퇴임 등 조치를 하였는가?", "학교운영위원회 회의 개최 공고(심의안건 포함) 및 회의록 등 관련 자료를 홈페이지에 공개하였는가?", "회의록에 학교장과 위원장의 서명 등 작성·관리가 적정한가?"],
+    docs: ["학교운영위원회 등록부 및 회의자료"],
+    examples: ["위원 다수가 3~4회 연속 회의에 불참하였는데도 당연 퇴임 등 조치를 하지 않음", "회의 개최 공고 시 심의안건을 홈페이지에 공개하지 않고 회의 종료 후 공고를 함께 올렸으며 회의록에 학교장·위원장 서명을 누락함"]
+  },
+  {
+    id: "gyomu-17", cat: "gyomu", verified: true, freq: 0,
+    title: "학교보건 관리",
+    detail: "학생 건강검진기관 선정, 교직원 잠복결핵 검진, 어린이활동공간 확인검사, 석면건축물 안전관리인 교육, 먹는 물 수질검사 등 학교보건 법정 의무사항을 기한 내에 이행해야 함.",
+    disposition: "",
+    basis: "학교건강검사규칙 제5조의2 / 결핵예방법 시행규칙 제4조 / 환경보건법 제23조제6항·같은 법 시행령 제16조의2 / 석면안전관리법 제24조·같은 법 시행규칙 제33조 / 수도법 시행규칙 제22조의4·제23조",
+    checks: ["학생 건강검진기관을 2개 이상 선정하였는가(부득이한 사유 시 교육장 승인을 얻어 단독 검진기관 선정·출장검진 가능)", "신규채용 교직원에 대하여 채용한 날로부터 1개월 이내에 잠복결핵 검진을 실시하였는가", "교실을 신축·증축(연면적 33㎡ 이상)·수선(70㎡ 이상)한 경우 실내 어린이활동공간 확인검사를 실시하였는가", "학교 석면건축물 안전관리인이 최초 지정 후 3개월 이내 8시간 이상 신규교육과 2년마다 4시간 이상 보수교육을 이수하였는가", "건축 연면적 5천㎡ 이상 학교 중 먹는 물 저수조 사용 학교는 매년 저수조 수질검사를 실시하였는가", "건축 연면적 5천㎡ 이상 학교는 급수관 수질검사를 2년마다 1회 이상 실시하였는가"],
+    docs: []
+  },
+  {
+    id: "gyomu-18", cat: "gyomu", verified: true, freq: 0,
+    title: "학교운영위원회 구성·운영",
+    detail: "학칙 제·개정, 예산·결산, 학부모 부담경비, 학교급식 등 법정 심의(자문) 사항을 누락 없이 심의하고, 위원 구성·선출과 회의 운영·공개, 심의결과 이행이 법령과 조례에 따라 이루어져야 함.",
+    disposition: "",
+    basis: "초·중등교육법 제32조·제34조 / 초·중등교육법 시행령 제4장 제2절·제59조 / 유아교육법 제19조의3~제19조의5 / 충청북도립학교운영위원회 설치·운영에 관한 조례 제9조",
+    checks: ["학교헌장·학칙 제·개정, 예산안·결산, 교육과정 운영방법, 교과용도서 선정, 학부모 부담경비, 방학 중 교육활동·수련활동, 학교급식 등 법정 심의(자문) 사항을 누락 없이 심의하였는가", "학교(유치원)운영위원회 구성이 적정한가(위원 자격, 국가공무원법 제33조 결격사유 확인 포함)", "초·중등교육법 시행령 제59조에 따른 위원 선출 절차가 적법·적정한가(최근 개정 사항 준수 확인)", "회의 소집 및 운영, 회의 공개, 회의록 작성 및 공개가 적정한가", "심의(자문) 결과를 이행하였는가", "소위원회를 구성·운영하고 있는가", "학부모 및 학생 의견 수렴 사항을 준수하였는가"],
+    docs: []
+  },
+  {
+    id: "bokmu-01", cat: "bokmu", verified: true, freq: 1,
+    title: "공무외 국외자율연수",
+    detail: "공무외 국외자율연수는 교육공무원법 제41조에 따라 복무 처리하고, 연수 계획서를 작성하여 학교장 내부결재를 받은 후 실시하여야 하며, 실시 후에는 결과 보고서를 작성하여 학교장에게 제출하여야 함.",
+    disposition: "",
+    basis: "｢교육공무원법｣ 제41조 / ｢교원휴가에 관한 예규, 교육부예규｣ / ｢교원의 공무외 국외여행 운영 계획, 충북교육청｣",
+    checks: ["공무외 국외자율연수 절차가 적정한가?"],
+    docs: ["교원 나이스 복무 처리 현황", "나이스 근무상황 신청 시 국외자율연수 계획서 첨부하여 승인 여부"],
+    examples: ["교육공무원법 제41조에 따른 국외자율연수를 실시하면서 연수 실시 전에 국외자율연수 계획서를 제출하지 않음"]
+  },
+  {
+    id: "bokmu-02", cat: "bokmu", verified: true, freq: 5,
+    title: "출장여비 지급",
+    detail: "근무지내 국내출장 여비는 출장 시간에 따라(4시간 미만 1만원, 이상 2만원) 지급하고 왕복 2km 이내 근거리 출장은 실비로 정산 지급해야 하며, 공용차량 이용 시 1만원(근무지외는 일비 1/2)을 감액하고 공적 항공마일리지는 NEIS에 등록·활용해야 함.",
+    disposition: "",
+    basis: "「공무원보수 등의 업무지침, 인사혁신처예규」 / 「공무원 인재개발 업무처리지침, 인사혁신처예규」 / 「공무원 여비규정」제7조, 제12조, 제18조, 제28조 / 「충청북도교육감 소속 공무원 공무국외출장 규칙」제9조 / 「충청북도교육감 소속 교직원 공적 항공마일리지 관리와 활용방안」",
+    checks: ["근무지내 국내출장 시 기준 시간에 맞게 지급하였는가?", "공용차량 이용 시(근무지내) 1만 원을 감액하였는가?", "공용차량 이용 시(근무지외) 일비의 2분의 1을 지급하였는가?", "교육훈련 여비 지급 시 등록일, 입교일, 수료일을 제외하고 일비를 감액하여 지급하였는가?", "여비가 중복 지급 되지 않았는가?", "왕복 2km이내의 근거리 출장인 경우 실비로 지급하였는가?(정산 신청 여부)", "나이스에 공적 항공마일리지 등록을 하였는가?", "관련 교육 및 점검(매 반기 마지막 날)을 실시하였는가?"],
+    docs: ["출장신청서, 출장여비정산서", "지출증빙 관련 서류", "공적 항공마일리지 활용실태 세부 점검표"],
+    examples: ["근거리 출장 여비를 증거서류에 의한 정산 신청 없이 지급하고 임차차량 이용 출장에 1만원을 감액하지 않아 과다 지급함", "1일 2회 이상 근무지내 출장의 합산 한도 2만원을 초과하여 여비를 과다 지급함", "공용차량을 이용한 근무지내 출장 다수 건에 1만원을 감액하지 않고 지급하여 과다 지급함", "공무국외여행으로 발생한 공적 항공마일리지를 NEIS에 등록하지 않음", "근거리 출장 미정산 전액 지급, 임차차량 이용 미감액, 1일 한도 초과, 교통비 중복 지급 등으로 출장여비를 과다 지급함"]
+  },
+  {
+    id: "bokmu-03", cat: "bokmu", verified: true, freq: 10,
+    title: "계약제교원 임용",
+    detail: "계약제교원 임용 시 임용 상한연령(65세) 준수, 임용심사위원회 심사, 인력풀·공고 채용절차 이행과 함께 결격사유·범죄경력·성범죄 및 아동학대 관련 범죄전력 조회를 임용 전에 실시해야 함.",
+    disposition: "",
+    basis: "「교육공무원법」 제32조·제10조의3·제10조의4 / 「유아교육법」 제23조 및 같은 법 시행령 제27조 / 「공무원보수규정」 제8조 / 「아동·청소년의 성보호에 관한 법률」 제56조 제3항 / 「아동복지법」 제29조의3 / 「유·초·중등·특수학교 계약제교원 운영 매뉴얼」(충청북도교육청)",
+    checks: ["계약제교원 임용 시 임용 상한연령(65세)을 준수하였는가? (지원자가 없을 경우 재공고 절차 이행 여부)", "기간제교사 인력풀시스템에 3~5일 정도 채용공고를 하였으며, 보수는 「공무원보수규정」 제8조에 따라 산정된 호봉액을 지급하였는가?", "유치원 보조강사 채용 시 자격요건(전공 또는 관련 분야 실무경력 등)을 갖추었는가?", "인력풀 활용 채용 시 임용계획 수립, 임용심사위원회 구성(교감·부장교사·교사 등 3~5명), 채용예정인원 2배수 이상 채용심사 등 절차를 준수하였는가?", "공고 채용 시 1차 공고 응시자가 2배수 미만인 경우 2차 채용공고를 실시하였는가? (지원자가 1명인 경우에도 적격 여부 확인)", "연장계약 시에도 임용심사위원회 개최, 범죄경력·결격사유 조회를 실시하였는가?", "결격사유, 범죄경력, 성범죄·아동학대범죄전력 조회 및 채용신체검사를 임용 전에 실시하였는가?", "기간제교원 호봉 획정 시 교원자격증 표시과목과 관련 없는 학위·경력을 동등학위로 인정하여 호봉을 가산하지 않았는가?", "인력풀 채용성공(개별채용) 등록 후 7일 이내에 보고 공문을 제출하였는가?", "학교직원 채용 시 해당 자격요건을 갖추고 채용 결격사유에 해당되지 않는가?"],
+    docs: ["계약제교원 임용 관계철", "계약제교원 채용 공고문", "계약제교원 및 학교직원 임용 관계철"],
+    examples: ["기간제교사 연장계약 시 임용심사위원회를 개최하지 않고 임용일이 지난 뒤 계약 결재를 상신하였으며 범죄경력회신서·공무원채용신체검사서를 구비하지 않음", "기간제교원 채용·연장계약 시 임용심사위원회를 수회 개최하지 않고 기간제교원 근무실적평가도 실시하지 않음", "정원 내 교사가 배치되어 채용할 수 없는 과목의 기간제교사를 채용하고, 산학겸임교사를 선발해야 하는데도 산학겸임 기간제교사로 공고하여 채용함", "기간제교사 호봉 획정 시 교원자격증 표시과목과 무관한 학위·경력을 동등학위로 인정해 3호봉을 가산하여 보수를 과다 지급함", "임용심사위원회 평가위원 명단에 없는 위원을 면접 평가위원으로 위촉하는 등 기간제교사 채용 심사를 부적정하게 운영함", "연장 임용 기간제교원에 대한 임용심사위원회를 개최하지 않고, 1차 공고 응시자가 2배수 미만인데도 2차 채용공고 없이 최종 합격자로 임용 요청함", "1차 공고 응시자가 2배수 미만인데도 2차 채용공고를 실시하지 않고 기간제교원을 최종 합격자로 임용 요청함", "연장계약 시 범죄경력·결격사유 조회를 다수 누락하고, 강사 채용 시 채용신체검사서 대신 건강진단서를 제출받음", "외부강사·계약제교원 채용 시 성범죄 경력 및 아동학대 관련 범죄전력 조회를 실시하지 않거나 임용기간 종료 후에 지연 일괄조회함", "강사·기간제교사 채용 시 기존 서류를 재활용하여 성범죄·아동학대범죄 전력 및 결격사유 조회를 실시하지 않거나 채용 이후에 실시함"]
+  },
+  {
+    id: "bokmu-04", cat: "bokmu", verified: true, freq: 12,
+    title: "휴가 및 유연근무 신청·허가",
+    detail: "휴가·지참·조퇴·외출은 사유 발생 전에 신청하여 허가받아야 하고 기관장의 휴가는 직근 상급기관장의 허가를 받아야 하며, 병가·공가·가족돌봄휴가·육아시간·장기재직휴가·자기계발휴가·유연근무 등은 법정 요건과 일수를 준수하여 운영해야 함.",
+    disposition: "",
+    basis: "「국가(지방)공무원 복무규정」 / 「국가공무원 복무·징계 관련 예규」(인사혁신처) / 「지방공무원 복무에 관한 예규」(행정안전부) / 「교원휴가에 관한 예규」(교육부) / 「충청북도교육감 소속 지방공무원 복무조례」 및 「충청북도교육감 소속 지방공무원 복무 업무처리 지침」",
+    checks: ["병가 운영이 적정한가? (7일 이상 연속 병가 및 연간 누계 6일 초과 시 진단서 제출, 일반병가 연 60일·공무상병가 연 180일 한도)", "공가의 사유가 적정한가?", "경조사휴가의 대상과 휴가일수가 적정한가?", "가족돌봄휴가 운영이 적정한가? (연간 10일 이내, 유급·무급 구분, 부서장의 증빙서류 확인)", "육아시간 운영이 적정한가? (8세 이하 또는 초등 2학년 이하 자녀, 1일 2시간 이내·36개월 범위, 일 최소근무시간 4시간 미충족 시 연가 처리)", "장기재직휴가 사용이 적정한가? (재직기간별 5~20일, 5회 한도 분할 사용, 시간단위 사용 불가, 미사용분 이월·소급 불가)", "자기계발휴가 사용이 적정한가? (연간 5일 이내, 시간단위 사용 불가, 1회 2일 초과 사용 불가)", "유연근무자가 출·퇴근시간 변경 시 복무관리시스템 등에 출·퇴근 등록을 하였는가?", "기관장의 휴가는 직근 상급기관의 장의 허가를 받아 실시하였는가?", "법정휴가일수를 초과하는 휴가는 결근으로 처리하였는가?"],
+    docs: ["근무상황부(NEIS)", "진단서", "인사기록(징계사항, 휴직기간 등)", "급여대장 및 연가보상비 결과(NEIS)"],
+    examples: ["승진·전직시험 응시가 아닌 채용 신체검사 사유의 공가를 유급 처리하고, 무급 대상 가족돌봄휴가를 유급으로 사용하며, 병가를 연 60일 초과 사용하여 연가보상비·급여를 과다 지급받음", "병가 누계 6일 초과분에 대해 의료기관 진단서를 제출하지 않고 연차수당을 부당 수령함", "일 최소근무시간 4시간을 충족하지 않은 채 육아시간을 사용하고, 자기계발휴가를 1회 2일 한도를 초과 사용하여 연가보상비를 과다 지급받음", "코로나19 확진 등으로 병가 누계 일수가 6일을 초과하였으나 의료기관 진단서를 제출하지 않음", "자녀 외 가족 돌봄은 연가 또는 무급 가족돌봄휴가를 사용해야 하는데도 유급 가족돌봄휴가를 사용하여 연가보상비를 과다 지급받음", "조퇴 사용으로 일 최소근무시간 4시간이 되지 않는데도 모성보호시간을 사용하고 연가보상비를 과다 지급받음", "기관장이 직근 상급기관장의 허가 없이 본인을 최종 결재권자로 하여 공가·병가를 처리함", "외출·조퇴 등으로 일 최소근무시간 4시간을 충족하지 않은 채 육아시간을 수회 부적정하게 사용함", "직위해제·정직 처분으로 사용 가능한 잔여 연가 일수가 0일인데도 연가를 초과 사용함", "병가·질병휴직으로 산정된 연가 가능 일수를 초과하여 연가를 사용하고 초과분이 결근 처리되지 않아 보수를 과다 지급받음", "소속 직원 다수가 유연근무제를 사용하는데도 출·퇴근 지정 현황을 지속적으로 모니터링하지 않음", "시차출퇴근형 유연근무자가 다수 일자의 출·퇴근 시간을 복무관리시스템에 등록하지 않음"]
+  },
+  {
+    id: "bokmu-05", cat: "bokmu", verified: true, freq: 4,
+    title: "외부강의",
+    detail: "외부강의는 소속 부서장의 사전 결재와 요청기관의 공문에 의해 출강해야 하고, 담당직무와 직접 관련 없는 외부강의나 겸직허가를 받은 외부강의는 출장이 아닌 연가·외출·조퇴 등으로 복무처리해야 함.",
+    disposition: "",
+    basis: "「국가공무원 복무·징계 관련 예규」(인사혁신처) / 「지방공무원 복무에 관한 예규」(행정안전부)",
+    checks: ["외부강의 출강 시 요청기관의 공문이 있었는가?", "외부강의 시 복무 처리는 적정하게 하였는가? (직무 관련 외부강의만 출장 처리 가능, 겸직허가·직무 무관 외부강의는 연가·외출·조퇴 처리)", "1개월을 초과하여 지속되는 외부강의는 겸직허가를 받았는가?", "외부강의 시간은 1일 4시간을 초과하지 않도록 하였는가?"],
+    docs: ["외부강의 관련 공문", "근무상황부(NEIS)"],
+    examples: ["요청기관 공문 없이 내부결재만으로 대학에 출강하고, 직무와 무관한 외부강의를 조퇴가 아닌 기타·출장으로 복무처리하며 출장비까지 지급받음", "겸직허가를 받은 대학 출강을 연가·조퇴가 아닌 근무지내 출장으로 처리하여 연가 초과 사용분 보수를 과다 지급받음", "1개월을 초과하여 지속적으로 외부강의에 출강하면서 겸직허가를 받지 않음", "외부강의 출강을 연가·외출·조퇴가 아닌 교육공무원법 제41조 연수로 복무처리함"]
+  },
+  {
+    id: "bokmu-06", cat: "bokmu", verified: true, freq: 6,
+    title: "출장",
+    detail: "출장은 상사의 명에 의해 정규 근무지 외에서 공무를 수행하는 것으로 공무와 무관한 사항을 출장 처리해서는 안 되며, 출장여비는 근거리 정산·일비 감액·한도액 등 지급 기준을 준수해야 함.",
+    disposition: "",
+    basis: "「국가공무원 복무규정」 및 「지방공무원 복무규정」 / 「국가공무원 복무·징계 관련 예규」(인사혁신처) / 「지방공무원 복무에 관한 예규」(행정안전부) / 「공무원 여비 규정」 및 「공무원보수 등의 업무지침」(인사혁신처) / 「충청북도교육감 소속 지방공무원 여비 조례」 / 「충청북도교육감 소속 공무원 공무국외출장 규칙」",
+    checks: ["순회지도 교사의 복무 처리는 적정한가?", "공무와 무관한 사항(교원단체 주최 체육행사 선수 참여, 조문 등)을 출장 처리하지 않았는가?", "공무국외출장 시 출국일 기준 20일 전까지 계획서를 첨부하여 허가를 받고, 경비 외부부담·10인 이상 출장 등은 공무국외출장심사위원회 심사를 받았는가?", "출장여비 지급이 적정한가? (왕복 2km 이내 근거리 출장 정산, 공용차량 이용 시 일비 감액, 근무지내 출장 한도액 준수)", "직무수행으로 출강하여 여비 또는 여비가 포함된 강사료를 받은 경우 출장여비 지급 없이 출장 처리하였는가?", "출장기간 중 초과근무는 출장 목적상 필연적으로 예상되는 경우에만 시간외근무수당을 지급하였는가?"],
+    docs: ["근무상황부(NEIS)", "출장여비 지출결의서"],
+    examples: ["관내 출장 시 감액 기준을 적용하지 않고, 관내·관외 출장 중복 상신을 확인하지 않은 채 출장비를 과다 지급함", "구체적 사유 기재 없는 출장 신청과 병조퇴·육아시간 등의 사유란에 점·빗금만 기재한 복무 신청을 그대로 승인함", "직원 모친상 조문 사유로 다수 교직원을 출장 처리함", "공무와 무관한 체육행사에 교직원들을 수회 출장 처리하고 출장비를 지급함", "왕복 2km 이내 근거리 출장 미정산, 같은 날 2회 이상 출장의 한도액 초과 지급, 공용차량 이용자 일비 미감액 등 출장여비를 부적정하게 지급함", "근거리 출장에 대해 세부 사용내역 증거 서류를 갖춘 정산 신청이 없는데도 출장여비를 과다 지급함"]
+  },
+  {
+    id: "bokmu-07", cat: "bokmu", verified: true, freq: 10,
+    title: "공무원 범죄 예방(품위유지의무)",
+    detail: "공무원이 음주운전·성비위·도박·폭행·절도 등 범죄를 저지른 경우 형사벌과 별도로 품위유지의무 위반 등 징계사유가 인정되면 징계벌이 병과되며, 성비위·음주운전은 강화된 처분 기준이 적용됨.",
+    disposition: "",
+    basis: "「공무원 비위사건 처리규정」 제4조 / 「지방공무원 징계규칙」 제3조 / 「도로교통법」 제44조 / 「형법」 제246조·제257조·제298조·제329조 등 / 공직기강 확립을 위한 성비위 근절 특별 추진계획(충청북도교육청 감사관)",
+    checks: ["교직원의 음주운전 등 도로교통법 위반 사실은 없는가? (음주운전 2회 이상 시 배제징계 등 중징계)", "성매매·강제추행 등 성비위 발생 시 직위해제 검토 등 강화된 처분 기준을 적용하였는가?", "수사기관의 수사개시 통보·처분결과 통보 접수 시 경위서·기관장 의견서 징구 등 자체조사와 징계의결 요구 절차를 기한 내 이행하였는가?", "기소유예 등 불기소 처분이라도 징계사유에 해당하면 징계기준을 적용하여 처리하였는가?", "4대 비위(지방공무원은 음주운전 포함)로 징계처분을 받은 경우 승진임용 제한을 적용하였는가?"],
+    docs: [],
+    examples: ["음주운전 금지 규정을 2회 이상 위반(혈중알코올농도 0.125% 주취운전)하여 불구속구공판 처분을 받고 품위유지의무 위반으로 해임됨", "교통사고로 아동에게 상해를 입히고 필요한 조치 없이 현장을 이탈(도주치상)하여 기소유예 처분을 받고 견책 처분됨", "도주치상으로 기소유예 처분을 받고 품위유지의무 위반으로 경징계 의결 요구됨", "업소에서 대가를 지급하고 유사성행위(성매매)를 하여 기소유예 처분을 받고 중징계 의결 요구됨", "피해자의 신체를 만져 강제추행하여 불구속구공판 처분을 받고 해임됨", "홀덤펍에서 수십 회에 걸쳐 금전을 걸고 도박을 하여 기소유예 처분을 받고 경징계 의결 요구됨", "술자리 시비 중 폭행으로 4주 치료를 요하는 상해를 가하여 기소유예 처분을 받고 경징계 의결 요구됨", "매장에서 타인의 현금을 절취하여 기소유예 처분을 받고 경징계 의결 요구됨", "편의점 물품을 절취하여 구약식 처분을 받고 경징계 의결 요구됨", "화장품 매장에서 반복하여 물품을 절취하여 기소유예 처분을 받고 경징계 의결 요구됨"]
+  },
+  {
+    id: "bokmu-08", cat: "bokmu", verified: true, freq: 6,
+    title: "갑질 예방",
+    detail: "우월적 지위를 남용하여 부당한 요구나 처우를 하는 갑질은 비인격적 대우·업무 불이익 등 유형별 판단기준에 따라 징계 등 처분되며, 갑질 비위는 징계 감경이 불가하므로 관리자·교직원 모두 유의해야 함.",
+    disposition: "",
+    basis: "「공무원행동강령」 / 「부패방지 및 국민권익위원회의 설치와 운영에 관한 법률」 / 「공공분야 갑질 근절을 위한 가이드라인」 / 「교육분야 갑질 근절 추진계획」(충청북도교육청)",
+    checks: ["법령·규칙·조례 등을 위반하여 자기 또는 타인의 부당한 이익을 추구하거나 불이익을 주지 않았는가?", "우월적 지위를 이용하여 금품·향응 제공을 강요·유도하거나 사적 이익을 추구하지 않았는가?", "특정인의 채용·승진·인사를 배려하기 위해 유·불리한 업무를 지시하지 않았는가?", "외모·신체 비하 발언, 욕설·폭언·폭행 등 비인격적인 언행을 하지 않았는가?", "정당한 사유 없이 불필요한 휴일근무·근무시간 외 업무지시, 부당한 업무배제를 하지 않았는가?", "정당한 사유 없이 민원 접수를 거부하거나 고의로 지연 처리하지 않았는가?", "의사에 반한 모임 참여 강요, 부당한 차별행위를 하지 않았는가?"],
+    docs: [],
+    examples: ["말다툼 사안을 회의에서 공개하며 전 직원 앞 사과를 요구하고 자신의 의견에 반대한 직원에 대한 경고 처분을 지시함(감봉 3월)", "회의 중 특정 직무 분야를 비하하는 발언을 하고 직원의 정당한 자료 요청에 화를 내며 큰 소리를 냄(주의)", "조회 시간에 다수 직원 앞에서 퀴즈 오답 개수를 공표하고 답변을 독촉하며 업무능력이 부족하다고 발언함(견책)", "주동자를 추궁하며 근무평가 0점을 주겠다고 하고 병가 후 출근한 직원에게 그만두라고 발언함(불문경고)", "전 직원 동의 없이 출·퇴근 등 지문인식 기록을 의무화하고 미기록 횟수를 평가에 반영함(권고)", "음식물 보온 문제를 이유로 식은 음식을 먹고 느낀 점을 회의하겠다며 중식 시간을 변경함(행정지도)"]
+  },
+  {
+    id: "bokmu-09", cat: "bokmu", verified: true, freq: 2,
+    title: "교육공무직 재량휴업일·장기재직휴가 초과 사용 점검(사이버 감사)",
+    detail: "학교 근무 교육공무직원은 개교기념일을 포함하여 연간 5일의 재량휴업일만 사용할 수 있고, 지방공무원 장기재직휴가는 재직기간별 한도를 초과할 수 없으며 초과 사용 시 과다 지급 보수가 회수됨.",
+    disposition: "",
+    basis: "「충청북도교육청 교육공무직원 근무사항에 관한 규칙」 / 단체협약 해설 및 이행계획 / 「지방공무원 복무규정」 / 「지방공무원 복무에 관한 예규」 / 「충청북도교육감 소속 지방공무원 복무조례」 및 복무업무 처리지침",
+    checks: ["학교 근무 교육공무직원이 개교기념일을 포함하여 재량휴업일을 연간 5일 초과 사용하지 않았는가?", "지방공무원이 재직기간별 장기재직휴가 한도(5년 이상 10년 미만 5일, 10년 이상 20년 미만 15일, 20년 이상 20일)를 초과 사용하지 않았는가?"],
+    docs: ["나이스(NEIS) 복무 자료"],
+    examples: ["교육공무직원이 재량휴업일을 연 5일 초과 사용하여 과다 지급된 보수가 회수됨", "지방공무원이 장기재직휴가를 재직기간별 한도보다 1~5일 초과 사용하여 과다 지급된 보수가 회수됨"]
+  },
+  {
+    id: "bokmu-10", cat: "bokmu", verified: true, freq: 0,
+    title: "계약제 교원 운영",
+    detail: "계약제교원 채용 시 결격사유·범죄경력 조회와 인력풀·공고 채용 절차를 매뉴얼대로 준수하고, 연장계약·채용서류·직무연수·근무실적 평가 등을 적정하게 관리해야 함.",
+    disposition: "",
+    basis: "유·초·중등·특수학교 계약제교원 운영 매뉴얼(충청북도교육청) / 교육공무원법 제10조의4",
+    checks: ["결격사유 및 범죄경력, 성범죄경력 및 아동학대관련 범죄전력 조회를 임용 전에 적정하게 실시하였는가(미실시·지연 조회·이전서류 대체 여부)", "인력풀을 통한 채용 시 채용 예정 기간별 대상자를 적정하게 조회·선정하고 관련 경과·사유 등을 내부결재로 보관하였는가", "공고를 통한 채용 시 공고문에 심사방법·심사일 등을 명시하고 도교육청·교육지원청·기간제 인력풀·학교 홈페이지 등 3군데 이상에 게재하였는가", "임용상한연령 초과자·명예퇴직자 임용 제한을 준수하였는가(2차 공고 후에도 지원자가 없는 경우 임용 가능, 명예퇴직자는 퇴직 후 6개월 이상 경과자에 한함)", "연장계약 시 4년 초과 여부와 동일교사 결원기간(공백 유무)을 확인하고 임용심사위원회(3~5명)를 개최(회의록 보관)하였는가", "채용신체검사서, 마약류 중독 여부 확인 진단서, 호봉획정표, 최종학력증명서 등 채용 서류를 적정하게 징구하였는가", "기간제교원 연수 대상자에게 연간 15시간 이상 직무연수를 실시하였는가", "1개월 이상 근무 기간제교원에 대한 근무실적 평가서를 작성하였는가"],
+    docs: []
+  },
+  {
+    id: "sudang-01", cat: "sudang", verified: true, freq: 8,
+    title: "각종 수당 지급",
+    detail: "보수는 발령일 기준으로 일할 계산하여 지급하고, 담임수당·정근수당·위험근무수당 등 각종 수당은 지급 요건과 실제 종사 기간에 따라 정확히 지급해야 하며 징계·정직 처분자에게는 규정에 따라 감액하거나 지급하지 않아야 함.",
+    disposition: "",
+    basis: "「공무원보수규정」제14조, 제22조 / 「공무원 수당 등에 관한 규정」제7조, 제13조, 제14조 / 「국가공무원법」제80조 / 「지방공무원보수업무 등 처리지침, 행정안전부예규」 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」 / 「유·초·중등·특수학교 계약제교원 운영 매뉴얼, 충청북도교육청」",
+    checks: ["담임변경 시 적정하게 지급하였는가?(일할계산 지급 여부)", "질병휴직 기간에 적정하게 지급하였는가?(수당 지급 적정 여부)", "정근수당 및 정근수당가산금을 적정하게 지급하였는가?", "위험근무수당 지급 시 실제 위험한 직무에 종사한 기간에 대하여 일할 계산하였는가?", "퇴직준비교육(구 공로연수) 시 적정하게 지급하였는가?(직무 미종사 기간에 따른 수당 미지급 여부)", "교원연수 파견 중 교원연수비 지급 여부"],
+    docs: ["담임변경 관련 서류", "수당지급 관련 서류(NEIS 포함)", "급식일지, 기계설비(보일러) 가동일지", "인사발령(휴직, 파견 등) 관련 서류"],
+    examples: ["보수반영내역 미확인으로 관리업무수당을 과소 지급하고 원로교사수당 지급대상이 아닌 자에게 착오 지급함", "정근수당 근무기간 산정 착오, 병역휴직기간 미반영, 가산금·교원연구비·육아휴직수당 계산 착오 등으로 과다·과소 지급함", "병가·질병휴직으로 실제 근무하지 않은 교원에게 교직수당과 시간외근무수당 정액분을 과다 지급함", "보직 변경을 미반영하여 교직수당가산금을 과다 지급하고 정근수당 지급대상이 아닌 자에게 지급하였으며 육아휴직수당 계산을 착오함", "직위해제자의 시간외근무수당 정액분을 감액하지 않고 보수 감액 산정 착오로 정근수당·본봉을 과소 지급함", "퇴직준비교육 파견 대상자에게 특수업무수당·가산금·겸임수당 등을 착오 지급함", "교육행정기관 파견근무 기간 중 지급대상이 아닌 교원연구비를 과다 지급함", "질병휴직(난임휴직 포함) 기간 중인 교원에게 교원연구비를 과다 지급함"]
+  },
+  {
+    id: "sudang-02", cat: "sudang", verified: true, freq: 4,
+    title: "육아휴직수당 지급",
+    detail: "육아휴직수당은 휴직 시작 6개월까지는 월봉급액, 7개월째 이후는 80%를 월별 상한액 내에서 지급하고, 산정액의 85%를 지급한 후 나머지 15%는 복직하여 6개월 이상 계속 근무한 경우 합산하여 일시불로 지급해야 함.",
+    disposition: "",
+    basis: "「공무원 수당 등에 관한 규정」제11조의3 / 「지방공무원 수당 등에 관한 규정」제11조의2 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」",
+    checks: ["육아휴직기간이 30일이상이며, 육아휴직 개시일을 기준으로 지급하였는가?(일할계산 지급 여부)", "육아휴직수당 월별 지급액 상한에 따라 지급하였는가?", "육아휴직한 공무원에게 산정한 육아휴직수당의 15퍼센트에 해당하는 금액을 빼고 남은 금액을 지급하였는가?(2024년 12월 육아휴직까지 적용)", "육아휴직수당의 15퍼센트에 해당하는 금액은 육아휴직 종료 후 복직하여 6개월 이상 계속하여 근무한 경우에 육아휴직수당 복직합산금을 일시불로 지급하였는가?", "육아휴직수당 지급 시, 기준 호봉을 적정하게 적용하였는가?(정기승급일과 육아휴직 개시일이 동일한 경우 호봉승급이 제한)"],
+    docs: ["주민등록등본", "수당지급 관련 서류(NEIS 포함)"],
+    examples: ["7개월째 이후 월별 지급액 상한을 반영하지 않아 육아휴직수당을 과소 지급함", "복직자 시간외수당 정액분 과다 지급, 호봉재획정에 따른 가산금 소급분 미지급, 휴직월 보수 일할계산 착오로 과다 지급함", "육아휴직 복직합산금을 지급기한이 지나도록 지급하지 않음", "기간제교원 명절휴가비를 미지급하고 휴직 개시일 호봉 승급 처리를 인지하지 못해 육아휴직수당과 복직합산금을 과다 지급함"]
+  },
+  {
+    id: "sudang-03", cat: "sudang", verified: true, freq: 5,
+    title: "부양가족수당 지급",
+    detail: "가족수당은 부양가족과 주민등록표상 세대를 같이하고 주소 또는 거소에서 실제로 생계를 같이해야 지급하며, 맞춤형복지비도 동일한 부양가족 기준으로 부여하고 부부 공무원 등의 경우 1명에게만 지급해야 함.",
+    disposition: "",
+    basis: "「공무원수당 등에 관한 규정」제10조 / 「지방공무원 수당 등에 관한 규정」제10조 / 「충청북도교육감 소속 공무원 맞춤형복지제도 업무처리 지침」 / 「충청북도교육청 교육공무직원 인사실무」",
+    checks: ["부양가족신고서(변동신고서) 소속기관장에게 제출 여부", "공무원, 교육공무직원과 주민등록표상 세대를 같이하는 사람으로서 해당 공무원, 교육공무직원의 주소나 거소에서 현실적으로 생계를 같이 하는지 여부", "가족수당은 지급사유 발생한 날이 속하는 달부터 소멸한 날이 속하는 달까지 지급 여부", "부양하는 공무원(교육공무직원)이 2명 이상인 경우나 부부가 공무원(교육공무직원)인 경우에는 그 중 1명의 공무원(교육공무직원)에게만 수당을 지급하였는지 여부", "강등, 정직, 감봉, 직위해제 및 휴직으로 봉급이 감액 지급되는 자에게 규정에 따라 가족수당 감액 지급 여부"],
+    docs: ["부양가족신고서, 가족관계증명서, 주민등록등본(NEIS시스템 활용)", "수당지급 관련 서류(NEIS시스템 포함)", "직원주소록 등"],
+    examples: ["주민등록표상으로만 부모와 세대를 같이하고 실제로는 다른 지역에 거주하면서 가족수당과 맞춤형복지비를 부당 수령함", "부모와 세대를 분리한 후 부양가족수당 상실 신고를 하지 않고 가족수당과 맞춤형복지비를 부당 수령함", "일시적 세대 분리로 지급대상이 아닌 기간에 가족수당을 부당 수령함", "주민등록상 주소지와 실제 거주지가 상이하여 지급요건을 갖추지 못했는데도 가족수당을 신청하여 부당 수령함", "세대분가로 지급요건을 충족하지 않는데도 가족수당과 맞춤형복지비를 과다 지급받음"]
+  },
+  {
+    id: "sudang-04", cat: "sudang", verified: true, freq: 6,
+    title: "시간외 근무수당 지급, 육아시간 사용",
+    detail: "시간외근무수당 정액분은 월 출근일수 15일 이상인 경우 지급하고 미달 시 매 1일마다 15분의 1을 감액하며, 시간외근무 인정시간은 1일 4시간을 초과할 수 없음. 육아시간 사용 시 일일 최소근무시간 4시간 이상을 충족해야 하며 미충족 시 연가로 처리해야 함.",
+    disposition: "",
+    basis: "「공무원수당 등에 관한 규정」제15조 / 「지방공무원 수당 등에 관한 규정」제15조 / 「국가공무원 복무·징계 관련 예규, 인사혁신처」 / 「지방공무원 복무 규정」제7조의7(특별휴가) 제8항",
+    checks: ["정직·직위해제·휴직·연가·병가·공가·특별휴가·방학·결근·1개월 이상 장기 교육파견자를 출근 일수에 포함하여 지급하였는지 여부", "관외출장, 병가, 연가 등으로 근무하지 않은 자에게 시간외수당 지급 여부", "초과근무 확인대장 당직자 확인 여부", "수기 초과근무 확인대장의 휴일 출근시간 기재사항의 적정 여부", "육아시간 사용 적정 여부(일일 최소근무시간 4시간 이상 근무 여부)"],
+    docs: ["수당지급 관련 서류(NEIS 포함)", "근무상황부, 초과근무 확인대장(카드인식 기록지)", "무인경비시스템 기록일지"],
+    examples: ["1일 4시간을 초과한 시간외근무를 인정하여 다수 직원에게 수당을 과다 지급함", "출산휴가·육아휴직으로 출근일수가 0일인 교원에게 근무일수 착오 산정으로 정액분을 과다 지급함", "시간외근무 시작·종료 시간을 증빙 없이 착오 입력하여 수당을 과다 지급함", "육아휴직·출산휴가 기간으로 근무일수가 0일인 달에 시간외근무수당 정액분을 과다 지급함", "지문인식기 인증이 가능한데도 수기 초과근무 확인대장으로 대체하여 초과근무 확인을 부적정하게 함", "일일 최소근무시간 4시간을 충족하지 않고 육아시간을 다수 사용하여 연가보상비 등을 과다 지급받음"]
+  },
+  {
+    id: "sudang-05", cat: "sudang", verified: true, freq: 6,
+    title: "성과상여금 지급",
+    detail: "성과상여금은 기관별 차등지급 평가기준을 마련하여 성과상여금 심사위원회 심의를 받은 후 공정하게 지급해야 하며, 실제 근무기간이 2개월 미만인 자는 지급대상에서 제외하고 실제 근무 기간에 따라 일할 계산하여 산정해야 함.",
+    disposition: "",
+    basis: "「공무원수당 등에 관한 규정」제7조의2 / 「지방공무원수당 등에 관한 규정」제6조의2 / 「교육공무원 성과상여금 지급 지침, 충청북도교육청」 / 「지방공무원 성과상여금 지급 계획, 충청북도교육청」 / 「○○학교 교원 성과상여금 심사위원회 회의 결과 처리 기준」",
+    checks: ["교원 보수성과심의위원회(다면평가관리위원회) 및 지방공무원 성과급 심사위원회 구성을 통하여 동점자 처리기준 등 성과기준 결정 및 반영은 적정하게 이루어졌는지?", "성과상여금 지급 제외 대상자를 제외하고 지급하였는지?(실제근무기간이 2개월 미만인 자에 대하여 지급 여부, 성과상여금 평가 대상기간 중 4대 비위 사유로 직위해제를 당하거나 징계를 받은 자에 대한 지급 여부, 4대 비위 이외의 사유로 중징계 처분을 받은 자에 대한 지급 여부)", "지급기준일을 기준으로 승진 후 2개월이 경과하지 아니한 자에게 승진 전 계급의 '지급기준액'을 기준으로 지급하였는지?", "성과상여금을 근무실적, 업무실적 등 성과와 관계없이 배분하거나 담합, 몰아주기, 수령 후 재배분하거나 받은 사실은 없는지?", "성과급 순위명부 조정 및 성과급심사위원회의 순위 조정 권한 내에서 조정이 적정하게 이루어 졌는가?"],
+    docs: ["성과상여금 지급 관련 서류", "지출 관련 서류"],
+    examples: ["성 관련 비위로 직위해제된 자를 지급대상에서 제외하지 않아 성과상여금을 과다 지급함", "휴직·신규임용 등으로 실제 근무기간이 짧은 직원의 순위 조정을 심사위원회 심의 없이 처리하여 대상자 간 순위 변동을 초래함", "시간제근무 기간제교원의 근무시간을 잘못 비례 산정하여 성과상여금을 과다 지급함", "성과상여금 평가기준 항목 점수를 잘못 부여하고 심사위원회 회의록의 참석 인원을 오기함", "다면평가 정성평가 반영 비율을 확인할 수 없게 처리하고 보수성과심의위원회 심의를 하지 않음", "연속 3회 S등급 감점 기준을 잘못 적용하고 조정점 부여를 위한 정량화된 세부기준을 마련하지 않음"]
+  },
+  {
+    id: "sudang-06", cat: "sudang", verified: true, freq: 2,
+    title: "휴직교원 보수(담임수당 등) 지급 점검(사이버 감사)",
+    detail: "교직수당가산금4(담임수당)는 학급담당교원에게만 지급해야 하고 육아휴직자에게는 육아휴직수당 외 기타 수당을 지급하지 않아야 하며, 휴직기간 보수 소급 처리 시 수당 과다 지급에 유의해야 함.",
+    disposition: "",
+    basis: "「공무원수당 등에 관한 규정」 / 「공무원보수 등의 업무지침」(인사혁신처)",
+    checks: ["휴직(질병휴직 등) 중 학급을 담당하지 않은 교원·기간제교사에게 교직수당가산금4(담임수당)를 지급하지 않았는가?", "육아휴직자에게 육아휴직수당 외 시간외근무수당(정액분) 등 기타 수당을 지급하지 않았는가?", "공무상 요양 승인 등으로 휴직기간 보수를 소급 지급할 때 수당별 지급 요건을 확인하였는가?"],
+    docs: ["나이스(NEIS) 급여 자료", "휴직 관련 인사기록"],
+    examples: ["질병휴직기간 보수 소급 지급 시 학급을 담당하지 않은 교원에게 교직수당가산금4(담임수당)를 과다 지급함", "육아휴직 중인 교사에게 시간외근무수당(정액분)을 과다 지급함"]
+  },
+  {
+    id: "gyeyak-01", cat: "gyeyak", verified: true, freq: 9,
+    title: "학교회계 용역, 물품 계약",
+    detail: "계약 체결 전 거래실례가격 등으로 예정가격을 조사해야 하며, 추정가격 2천만원 초과 용역·물품은 지정정보처리장치를 통한 수의견적 공고 또는 입찰로 계약하고 낙찰하한율(2천만원 초과 88%, 이하 90%)을 적용해야 함.",
+    disposition: "",
+    basis: "「지방자치단체를 당사자로 하는 계약에 관한 법률 시행령」제7조~제10조, 제30조 / 「지방자치단체 입찰 및 계약 집행기준, 행정안전부 예규」 / 「학교회계 실무매뉴얼, 충청북도교육청」 / 회계분야 청렴문화 정착을 위한 수의계약 업무 개선방안(충청북도교육청 재무과-11793, 2014. 5. 13.) / 수의계약(1인 수의계약 금액 기준) 업무 개선방안 알림(충청북도교육청 재무과-25707, 2018. 10. 11.) / 지방계약법 시행령 수의계약 등 한시적 특례기간 연장 안내(충청북도교육청 재정복지과-19537, 2025. 7. 1.)",
+    checks: ["지출의 원인이 되는 계약의 예정가격에 대하여 거래실례가격, 원가계산가격 및 견적가격 등에 의하여 조사한 가격 또는 설계가격 적정 여부(품질·규격에 적합한 물품가격 계상 여부, 원가계산·거래실례가격·통제가격에 의할 수 없을 경우 감정가격·유사 실례가격 또는 견적가격에 의한 예정가격 결정 여부)", "수의계약의 적정 여부(수의계약 대상금액의 적정 여부, 동종 물품을 수의계약 목적으로 분할 구매 여부, 낙찰하한율 적용 적정 여부(2천만 원 초과 88%, 2천만 원 이하 90%), 단일견적 수의계약 시 계약금액의 적정 여부)", "추정가격 2천만원 초과 용역, 물품에 대하여 지정정보처리장치를 통한 수의 견적 공고 또는 입찰을 통한 계약 추진 여부", "고시금액 2.3억원 미만 물품 구매 시 낙찰하한율을 적용하지 않고 최저가 적용 여부(2천만 원 미만 물품 구매 시에도 경쟁 입찰 방식을 적용할 경우 해당됨)", "수량, 물량 증가 등에 따른 금액 변경 시 변경계약 체결 적정 여부", "견적공고(입찰) 참여 면세업자의 낙찰로 계약 체결 시 부가가치세 제외한 금액으로 계약 체결 여부"],
+    docs: ["공고 및 계약 관련 서류"],
+    examples: ["추정가격 2천만원 초과 위탁용역을 지정정보처리장치를 통한 2인 이상 수의계약 안내 공고 없이 1인 수의계약으로 체결함", "단독 입찰 참여로 유찰되었는데도 재공고 없이 단독 참여자를 낙찰자로 결정하고 계약보증금·확약서를 징구하지 않음", "추정가격 2천만원·5천만원 초과 물품 구매를 분할하여 각각 1인 수의계약을 체결하고 다수 건을 집합 지급하여 지급내역 확인을 어렵게 함", "물품선정 검토 근거 서류를 구비하지 않고 총괄 집행계획 없이 사업을 추진하면서 분할 수의계약으로 집행하고 시방서·도면 없이 시설공사를 발주함", "사업 시기가 비슷한 동일 공종 공사를 분할하여 각각 1인 수의계약을 체결함", "정당한 이유 없이 계약을 포기한 업체에 대한 수의계약 배제업체 등록 요청을 하지 않음", "소액수의견적 공고 시 토요일·공휴일 제외 3일 이상의 공고기간을 확보하지 않고 낙찰하한율을 88%보다 낮게 잘못 적용하여 공고함", "수의계약 한시적 특례를 잘못 이해하여 추정가격 5천만원 초과 도서 구입을 1인 수의계약으로 체결함", "급식물품 구매 공고방식 오류, 견적서·입찰서 제출기간 미준수, 낙찰하한율 오적용과 함께 직접생산증명 미확인 및 물품선정위원회 미개최로 물품을 선정함"]
+  },
+  {
+    id: "gyeyak-02", cat: "gyeyak", verified: true, freq: 3,
+    title: "물품 관리",
+    detail: "학교회계 소관 물품의 취득·보관·사용·처분 사항은 비품출납 및 운용카드에 정리하고, 매년 정기 재물조사를 실시하여 계수자 기명날인·입회자 확인 등 절차를 이행해야 함.",
+    disposition: "",
+    basis: "「공유재산 및 물품관리법」 제57조·제58조·제60조·제65조 / 같은 법 시행령 제57조·제58조·제59조·제66조 / 「충청북도교육비특별회계 소관 물품관리 조례」 제24조 / 같은 조례 시행규칙 제22조",
+    checks: ["물품의 취득·보관·사용·처분 등에 관한 사항을 비품출납 및 운용카드에 정리하였는가?", "정기 재물조사 시 전수 조사를 실시하였는가?", "재물조사 결과를 재물조사 목록표에 기입하고 재물조사반장·계수자·입회자·물품운용관의 확인(기명날인)을 받았는가?", "정수관리 대상 물품은 물품수급 관리계획을 수립하고, 정수 추가 소요 시 관할 교육지원청의 정수배정 승인을 받은 후 취득하였는가?"],
+    docs: ["정기재물조사 관련 서류(재물조사 목록표)", "물품대장"],
+    examples: ["전자태그(RFID) 기반 재물조사를 실시하면서 재물조사 목록표 출력·실사 상태 기록, 계수자 기명날인 및 입회자 확인 절차를 누락함", "정기 재물조사 자체 계획을 수립하지 않고 담당자·관리자 서명 없이 목록표를 작성하였으며, 구매물품 다수를 비품출납 및 운용카드에 반영하지 않음", "재물조사 계획 미수립·서명 누락으로 실제 조사 여부를 확인할 수 없게 하고, 구매물품을 비품출납 및 운용카드에 반영하지 않음"]
+  },
+  {
+    id: "gyeyak-03", cat: "gyeyak", verified: true, freq: 3,
+    title: "도서 관리",
+    detail: "학교도서관운영위원회를 구성·운영하고 도서구입 예산을 적기에 집행해야 하며, 노후 도서 폐기는 물품관리조례에 따라 불용처리하고 미반납·연체 도서는 반납독촉 등 적극 조치해야 함.",
+    disposition: "",
+    basis: "「도서관법」 제38조 / 「학교도서관진흥법」 제10조·제13조·제15조 / 「충청북도교육청 학교도서관 진흥 조례」 / 「충청북도교육비특별회계 소관 물품관리조례」 제16조 / 학교 도서관 운영규정",
+    checks: ["학교도서관운영위원회 구성 및 운영이 적정한가?", "도서관리 전산화 및 도서자료 관리가 적정한가?", "도서구입비 집행 및 시기가 적정한가? (당해연도 교육과정 운영에 맞춘 적기 집행)", "불용도서·미반납도서를 파악하여 반납독촉·변상 요구 등 조치하였는가?", "도서 폐기·제적 처리가 적정한가? (불용결정 시 국가·지방자치단체 소요조회 후 불용, 도서관운영위원회 심의)"],
+    docs: ["도서등록원부", "도서선정위원회 회의록", "폐기·제적 관련 대장 또는 공문", "도서 대출 및 반납 관련 대장"],
+    examples: ["학기 말에 도서를 품의하여 방학 중에 납품받는 등 적기에 도서를 구입하지 않고, 장기 연체 도서에 반납독촉·변상 요구 등 조치를 하지 않음", "학교도서관운영위원회를 구성·운영하지 않고 대출권수·대출기간을 운영규정과 다르게 정하였으며 다수 도서가 장기 연체됨", "학교도서관운영위원회를 구성하지 않고 학교도서관 운영계획도 수립하지 않음"]
+  },
+  {
+    id: "chehum-01", cat: "chehum", verified: true, freq: 0,
+    title: "현장체험학습 운영",
+    detail: "현장체험학습·수학여행은 기본운영계획 수립, 동의율 조사, 활성화위원회 운영, 현장답사, 학교운영위원회 심의 등 매뉴얼상 추진 절차를 준수해 운영해야 함. 사전 안전교육과 불참 학생 대책, 청렴도 향상 계획도 함께 수립·시행해야 함.",
+    disposition: "",
+    basis: "현장체험학습 운영 매뉴얼 / 2025년도 분야별 감사 착안사항(충북교육청 감사관)",
+    checks: ["현장체험학습·수학여행 운영이 적정한가(추진 절차 준수 여부)", "기본운영계획 수립, 학부모(학생) 동의율 조사, 현장체험학습 활성화위원회 운영, 현장답사를 실시하였는가", "학교운영위원회 심의(자문), 계약, 경비 집행 및 정산, 만족도조사, 현장체험학습 공개시스템 탑재를 이행하였는가", "학교별 실정에 맞는 계획을 수립·시행하였는가", "사전 안전교육을 실시하였는가", "불참 학생에 대한 계획을 수립·시행하였는가", "학생 무료입장, 운영, 위탁업체, 인솔자 등 청렴도 향상 계획을 수립·시행하였는가"],
+    docs: []
+  },
+  {
+    id: "hoegye-01", cat: "hoegye", verified: true, freq: 10,
+    title: "학교회계 예산 편성",
+    detail: "학교회계 세출예산은 정책사업·단위사업·세부사업으로 구분하여 세출예산 사업설명에 따라 편성하고 지출과목(세출원가통계비목)에 맞게 집행해야 함. 학교운영위원회 심의를 거쳐 확정된 세입·세출예산서 및 결산서를 학부모·교직원에게 공개하고 예산확정 후 10일 이내에 학교 홈페이지에 공개해야 함.",
+    disposition: "",
+    basis: "「유아교육법」제19조의7, 제19조의8 / 「초·중등교육법」제30조의2, 제30조의3 / 「충청북도 공립학교회계 규칙」 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["공립학교회계 규칙 및 학교회계 예산편성 매뉴얼 준수 여부", "학교회계 예산과목 구분과 원가통계비목 설정 준수 여부", "전입금, 사용료, 수수료 등 징수, 수입, 세입예산편성 적정 여부", "예산 편성 및 사전 작업 시 교직원 참여 여부", "예산편성 관련 기한 준수 여부(예산안: 회계연도 개시 30일 전 제출, 예산서: 회계연도 개시 전 확정 여부 ※ 에듀파인 학교회계시스템 확정 여부)", "성립 전 예산집행의 적정 여부(편성요건 충족 여부, 추경예산 편성(반영) 적시성 여부)", "예산의 과다 이월 여부(사업 종료 후 집행 잔액 과다 여부, 집행 잔액에 대한 추가경정예산 편성 여부)", "예산서 공개 여부(예산서: 예산확정 후 10일 이내)"],
+    docs: ["예산편성 관련 서류", "세입세출 예·결산서(부속서류 포함)", "학교운영위원회 회의록 등"],
+    examples: ["간주처리 편성요건에 해당하지 않는 목적사업비 반납·자체재원 조정을 간주처리 추경예산으로 편성하고 예산 공개도 기한을 넘겨 지연함", "도서구입비를 학교운영기본경비 편성 기준 금액에 미달하게 요구하여 학교기본운영비의 3% 이하로 편성되게 함", "본예산안을 회계연도 개시 이후에 시스템에 등록하고 확정함", "본예산안을 이사회 제출기한을 넘겨 제출하고 추가경정예산을 회계연도 종료 후 간주처리로 확정함", "간주처리 편성요건에 해당하지 않는 자체 사업 조정을 간주처리 추경예산으로 편성함", "회계연도 말 교부 목적사업비를 성립전 예산 편성 후 동일 회계연도 내 차기 추경에 반영하지 않고 회계연도 경과 후 편성함", "학교운영위원회가 심의·의결한 예산안의 일부 항목을 임의로 증액 조정하여 확정함", "결산 후 불용 확정액을 최초 추경예산에 반영하지 않고 회계연도 말에 편성하게 하여 과다 불용액을 발생시킴", "수익자부담경비를 학교회계 예산편성 요구 등의 절차 없이 직접 현금 수납함", "목적사업비 반납금을 출납폐쇄 기한 경과 후 간주처리로 편성하고, 명시이월 대상이 아닌 사업을 학교운영위원회 심의 없이 명시이월함"]
+  },
+  {
+    id: "hoegye-02", cat: "hoegye", verified: true, freq: 5,
+    title: "예산의 목적 외 사용금지",
+    detail: "미리 예산으로 학교운영위원회 심의를 얻은 경우 외에는 세출예산에서 정한 목적 외 용도로 경비를 사용하거나 정책사업 간 이용할 수 없음. 목적사업비는 정해진 목적에 따라 효율적으로 집행·정산하고 10만원 이상의 집행 잔액은 반납해야 함.",
+    disposition: "",
+    basis: "「지방재정법」제47조 / 「충청북도 공립학교회계 규칙」제17조, 제18조 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["예산 사용의 적정 여부(예산편성 과목대로 실제 집행되었는지 여부, 예산의 변경사용 사유의 타당성 여부)", "목적사업비 관리의 적정 여부(목적사업비 적정 집행 및 교부 목적 외 사용 여부, 목적사업비 정산 및 반납기준 준수 적정 여부)", "예산 이·전용의 적정 여부(예산의 이용은 예산총칙 명시 여부, 예산의 전용 시 사유의 타당성 여부)"],
+    docs: ["세입세출 예·결산서(부속서류 포함)", "지출 관련 서류", "정산 관련 서류"],
+    examples: ["예산 전용 절차 없이 유형자산·여비 목에 해당하는 태블릿PC·도서·프린터 구입 등을 운영비 목에서 집행함", "업무추진비·운영수당 목에 해당하는 협의회비, 강사비 등을 교육운영비·일반수용비로 편성된 예산에서 집행함", "일반업무추진비로 집행할 수 없는 교직원·봉사자 격려 물품과 행사 물품을 비목을 잘못 적용하여 집행함", "교육운영비 등으로 원가통계비목을 잘못 편성·집행하고 일반업무추진비에 해당하는 경비를 타 비목에서 집행함", "업무추진비성 경비를 일반수용비 목에서 집행하고 건당 50만원 이상 집행 시 주된 상대방의 인적사항을 증빙서류에 기재하지 않음"]
+  },
+  {
+    id: "hoegye-03", cat: "hoegye", verified: true, freq: 13,
+    title: "학교회계 집행",
+    detail: "물품 구입 전에 편성 예산 범위 내에서 집행 품의하여 학교장의 결재를 받아야 하고, 지출원인행위는 학교장이 하며, 계약 대가는 청구를 받은 날부터 5일 이내에 정당한 채주에게 지급하고 세출예산은 목적에 맞게 집행해야 함.",
+    disposition: "",
+    basis: "「지방자치단체를 당사자로 하는 계약에 관한 법률 시행령」제67조 / 「충청북도 공립학교회계 규칙」 / 「지방자치단체 교육비특별회계 세출예산 집행기준, 교육부예규」 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」 / 「학교회계 실무매뉴얼, 충청북도교육청」 / 「상품권 구매 및 사용의 투명성 제고 방안 알림, 충청북도교육청」",
+    checks: ["지출원인행위 시기 적정 여부(예산배정 전 지출원인행위 여부, 배정예산초과 지출원인행위 여부, 연도내 이행이 불가능함에도 연도말 무리한 지출원인행위 여부)", "지출원인행위 처리 적정 여부(학교장의 결재처리 여부, 허위 지출원인행위로 인한 부당인출 여부)", "지출시 사전 조치 여부(지출원인행위부의 기재금액과 상이 여부, 정당한 채주 외에 지급 및 대가 지급 지연 여부, 정산·미실시분(미사용분)에 대한 감액처리 없이 대금 지급 여부, 지출관련 증빙서류 구비·편철 및 보관 여부(보존기간 5년))"],
+    docs: ["지출 관련 장부(에듀파인시스템)", "지출증빙 관련 서류"],
+    examples: ["학교장 부재 시 직무대리자가 지정되지 않은 상태에서 다수의 지출원인행위를 대결 지정된 부장교사 결재로 처리함", "지출증빙서를 편철하지 않고 현금출납부 결재를 지연하였으며 카드대금 연체료를 발생시키고 카드 누적포인트를 세입 조치하지 않음", "상품권 배부대장을 작성하지 않고 상품권 구매·사용 내역을 학교 누리집에 공개하지 않음", "업무추진비 집행내역, 50만원 이상 신용카드 사용 건, 학교발전기금 접수·집행내역을 미공개하거나 지연 공개함", "지출원인행위를 최소 8일에서 최대 39일이 지난 뒤 회계시스템에 소급하여 정리함", "비품을 일반수용비·교육운영비목에서 집행하고 목적사업비 집행 잔액을 반납하지 않아 순세계잉여금으로 편입되게 함", "학교회계와 관계없는 기관 명의 계좌(동문회비)를 처리하지 않고 장기간 보관함", "유휴자금 정기예금 추가 예치가 가능한데도 소홀히 하여 이자수입 증대 노력을 하지 않음", "공사비에 계상된 보증서발급수수료의 증빙자료를 받지 않고도 정산하지 않아 공사비를 과다 지급함", "공공조달 유류구매카드를 발급받지 않고 학교법인카드로 유류비를 결제하여 예산을 절감하지 못함", "학급운영비를 휴일·초과근무시간에 음식점 등에서 집행하고 구입 물품을 장기간 학생에게 전달하지 않음", "학급운영비로 집행 금지 항목인 상품권을 구입하고 개인 포인트를 적립하였으며 증빙 누락과 학교장 승인 없는 한도 초과 집행을 함", "교육운영비·업무추진비·운영수당 등으로 편성·집행해야 할 경비 다수를 일반수용비목으로 편성·집행함"]
+  },
+  {
+    id: "hoegye-04", cat: "hoegye", verified: true, freq: 10,
+    title: "업무추진비",
+    detail: "업무추진비는 증빙서류를 구비하여 집행하고 격려금을 현금으로 지출할 경우 전달자와 최종수요자의 영수증을 모두 징구해야 함. 소속 직원 격려금품은 의례적인 경우에만 지급 가능하고 임의단체 회비 등 개인 가입 경비는 개인이 부담해야 함.",
+    disposition: "",
+    basis: "「지방자치단체 업무추진비 집행에 관한 규칙, 행정안전부령」 / 「지방교육행정기관 업무추진비 집행에 관한 규칙, 교육부령」 / 「지방자치단체 교육비특별회계 세출예산 집행기준, 교육부 예규」 / 「충청북도교육청 업무추진비 집행기준 및 공개에 관한 조례, 충청북도교육청」 / 「학교회계 예산편성 및 집행지침, 충청북도교육청」 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["업무추진비 연간 편성 한도액 초과 편성 여부", "기관장(학교장) 등 개인자격으로 가입한 단체에 대한 회비 지급 여부", "(교)직원 전출 및 승진 시 화분 구입 전달 여부", "기관장(학교장)이 상급기관 및 유관기관 직원에게 격려금 지급 여부", "수련활동, 현장체험학습 등 인솔교사에 대한 격려금 지급 여부", "선거 당선자, 교직원 전출, 승진 등에 축하 화분 구입 전달 여부", "전달자가 격려금을 현금으로 지급하면서 최종수요자의 영수증을 수령하였는지 여부", "건당 50만원 이상의 경우 주된 상대방의 소속(주소) 및 성명 등 증빙서류 기재 여부", "업무추진비 익월 10일까지 공개 여부"],
+    docs: ["지출 관련 장부(에듀파인시스템)", "지출 관련 서류"],
+    examples: ["명절 노고 격려 물품 등 집행 불가 항목을 일반업무추진비로 다수 집행함", "업무추진비 목에 해당하는 경비를 타 비목에서 집행하여 업무추진비 연간 편성 한도액을 초과 집행함", "집행 대상이 아닌 축하 꽃다발 등을 일반업무추진비로 집행하고 격려금 전달 시 최종수요자 영수증을 징구하지 않음", "소속 교직원 명절 선물 구입을 일반업무추진비로 집행함", "업무추진비 목에 해당하는 협의회 경비를 교육운영비·교직원복지비에서 집행함", "지역행사 격려금을 직책급 업무추진비가 아닌 일반업무추진비로 집행함", "직무활동 범위가 아닌 교직원 단체복 구입에 업무추진비를 집행함", "지급 불가 대상인 학교장에게 경조사비를 지급하고 지출증빙 없이 식사 대용품을 집행함", "교직원 힐링캠프 버스임차료·숙박비 등을 목적 외 사용하고 간담회비를 1인당 한도 초과 집행하게 함", "교직원 격려 금품을 일반업무추진비로 집행하고 50만원 이상 건의 주된 상대방 인적사항을 증빙서류에 기재하지 않음"]
+  },
+  {
+    id: "hoegye-05", cat: "hoegye", verified: true, freq: 8,
+    title: "학교회계 회계연도 준수",
+    detail: "학교회계 회계연도는 매년 3월 1일부터 다음해 2월 말일까지이며 각 회계연도 경비는 해당 연도 세입으로 충당해야 함. 출납은 회계연도 종료일에 폐쇄하되 예외 사유에 해당하는 경우에 한해 다음 회계연도 3월 20일까지 수입·지출 처리할 수 있음.",
+    disposition: "",
+    basis: "「지방재정법」제7조 / 「충청북도 공립학교회계 규칙」 / 「학교회계 예산편성 및 집행지침, 충청북도교육청」 / 「학교회계 예산편성 매뉴얼, 충청북도교육청」 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["수익자부담경비의 관리 및 정산 적정 여부", "예산 이·전용 요건 적정 여부", "명시이월·사고이월 처리 요건 적정 여부", "목적사업비 집행, 정산, 반납 적정 여부", "현금출납부 및 통장잔액 일치 여부", "연도말 집행 잔액을 편성목적과 무관한 예산의 목적 외 사용 여부", "불용액 과다 발생 여부(사업비 과다 편성 후 불용 여부, 특별한 사유없이 예산 미집행된 예산 확인)", "회계연도 소속 구분 혼동 집행 여부"],
+    docs: ["통장, 현금출납부, 지출증빙서 등 각종 지출 관련 서류", "세입세출 예·결산서(부속서류 포함)", "수익자부담경비 정산 관련 서류", "홈페이지 공개 내역 확인"],
+    examples: ["명시이월된 목적사업비 잔액을 특별한 사유 없이 집행·반납하지 않아 순세계잉여금으로 편입되게 함", "납품기한이 출납폐쇄기간 종료 후로 당해연도 내 사업 완료가 불가능함을 알고도 명시이월하지 않고 사고이월함", "사고이월하여 처리해야 할 물품대금을 회계연도 말에 세입세출외현금 계좌로 이체한 후 차기연도에 지급함", "출납폐쇄기간 이후에 납품·검수하고 당일 지출하는 등 계약·집행을 부적정하게 함", "출납폐쇄기한(3월 20일) 이내 지출이 가능한데도 기한을 넘겨 공사대금을 지급함", "회계연도 말 계약 건 다수를 출납폐쇄기간 중 부적정하게 지출하고 일부는 회계연도 마감 후 원인행위·지출함", "다수 건을 출납폐쇄기간 이후에 납품·검수하여 지출·집행함", "당해연도 내 사업 완료가 불가능함을 인지하고도 명시이월하지 않고 사고이월하여 학교운영위원회 심의 없이 이월함"]
+  },
+  {
+    id: "hoegye-06", cat: "hoegye", verified: true, freq: 5,
+    title: "세입세출외현금 관리",
+    detail: "보수에서 공제한 소득세·보험료 등 세입세출외현금은 월별 적정액을 공제하여 해당 기관에 납부하고 정산 통보에 따라 추가 징수·반환해야 하며, 보증금·보관금·잡종금 등은 반환 절차에 따라 정당한 채주에게 반환해야 함.",
+    disposition: "",
+    basis: "「충청북도교육비특별회계 재무회계규칙」제85조~제94조 / 「충청북도 공립학교 회계규칙」제43조 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["보관금, 보증금, 잡종금 외의 세입세출외현금 관리 여부", "세입세출외현금의 연도 구분 및 정리 구분에 의한 정리 여부", "세입세출외현금의 수납 절차 및 반환 절차 적정 여부", "세입세출외현금의 이자 학교회계 귀속 여부"],
+    docs: ["세입세출외현금출납부 및 지출 관련 서류"],
+    examples: ["세입세출외현금에서 발생한 이자를 학교회계 세입으로 편성하지 않고 잡종금으로 장기 보관함", "퇴직금·퇴직적립금 지급(이관) 후 남은 잔액을 학교회계로 세입 조치하지 않고 세입세출외현금 잔액으로 방치함", "매각대금·반납금 잔액을 세입 처리하지 않고 보관하고, 입찰보증금을 세입세출외현금이 아닌 학교회계로 잘못 세입 처리함", "공유재산 사용료 계약보증금을 허가기간 종료 후에도 계약상대자에게 반환하지 않고 장기 보관함", "수납한 소득세 등을 정산하거나 정당한 채주에게 반환하지 않고 세입세출외현금 계좌에 장기 보관함"]
+  },
+  {
+    id: "hoegye-07", cat: "hoegye", verified: true, freq: 3,
+    title: "법인카드 관리 및 운용",
+    detail: "신용카드 이용대금은 매출전표를 첨부하여 결제일까지 결제계좌에 입금 조치하고, 카드 사용으로 발생한 포인트 등 인센티브와 이자는 연 1회 이상 세입 조치해야 하며, 매월 1회 카드 사용내역을 학교장에게 보고하고 확인받아야 함.",
+    disposition: "",
+    basis: "「지방자치단체 교육비특별회계 세출예산 집행기준, 교육부 예규」 / 「충청북도 공립학교회계 규칙」제25조 / 「학교회계 실무매뉴얼, 충청북도교육청」",
+    checks: ["신용카드 사용·관리의 적정 여부(분실·재발급 시 적정 처리 여부, 신용카드 대금 연체 여부, 발급대장 등 인계인수 처리 적정 여부)", "신용카드 사용으로 발생한 인센티브 및 이자수입 세입조치 여부(포인트, 적립금 등은 학교회계로 연 1회 이상 세입조치)", "신용카드 사용내역 매월 1회 보고 여부", "사용제한 업종, 심야시간(오후 11시 이후) 또는 주말 사용 확인여부"],
+    docs: ["신용카드 관리대장", "신용카드 사용내역 보고서", "신용카드 결제통장", "신용카드청구명세서"],
+    examples: ["법인카드 사용으로 발생·누적된 포인트를 세입 처리하지 않음", "법인카드 결제대금을 결제일보다 지연 입금하여 연체료를 발생시킴", "카드대금을 결제일에 입금하지 않아 반복 연체·미납이 발생하고 법인카드 모니터링을 실시하지 않음"]
+  },
+  {
+    id: "hoegye-08", cat: "hoegye", verified: true, freq: 6,
+    title: "학교발전기금 운영",
+    detail: "학교발전기금은 운용계획서·접수대장·출납부 등을 운영위원장 결재로 비치·관리하고 모든 수입을 세입세출예산에 계상하여 조성목적에 맞게 집행해야 하며, 운용계획·집행내역·결산서를 기한 내 홈페이지에 공개해야 함.",
+    disposition: "",
+    basis: "「초·중등교육법 시행령」 제64조 / 「초·중등교육법 시행규칙」 제45조·제46조 / 「충청북도립학교운영위원회 설치·운영에 관한 조례」 / 「학교발전기금의 조성·운용 및 회계관리 요령」(충청북도교육청) / 「학교체육 진흥법」 제11조 / 「학교체육 활성화 추진 기본계획」(충청북도교육청)",
+    checks: ["학교발전기금 관련 서류(운용계획서, 기탁서, 접수대장, 수입일계표, 출납부, 결산보고서)를 비치·관리하고 있는가?", "학교발전기금 운용(변경)계획 수립이 적정하며, 변경 시 학교운영위원회 심의·의결을 받았는가?", "출납명령기관(교체 후 14일 이내)·출납원(교체 후 7일 이내) 교체 시 예금 잔액증명서를 첨부한 사무 인계·인수를 실시하였는가?", "운용(변경)계획서(심의·의결 후 10일 이내), 접수·집행내역(분기별 1개월 이내), 결산서(회계연도 종료 후 3개월 이내)를 홈페이지에 공개하였는가?", "조성된 발전기금을 사용목적에 맞게 집행하고, 직접 지출하지 않았는가? (인건비·수당·여비·업무추진비 등 사용 제한)", "학교운동부 후원금은 학교운영위원회 심의·의결을 거쳐 학교회계에 편입하여 운영하였는가?"],
+    docs: ["학교발전기금 운용 및 (변경)계획서", "학교발전기금 접수대장 및 수입일계표", "학교발전기금 기탁서", "학교발전기금 출납부", "학교발전기금회계 결산보고서 및 인수·인계서", "학교발전기금 관련 홈페이지 공개 자료"],
+    examples: ["접수대장·기탁서·출납부를 운영위원장 결재 없이 작성·보관하고 장학금 지급 회계서류도 위원장 결재 없이 집행함", "학교운영위원회 위원장 교체 후 학교발전기금회계 출납명령기관 사무 인계·인수를 실시하지 않음", "학교발전기금 출납부를 운영위원장이 아닌 학교장 결재를 받아 비치·관리함", "운동부 입상 격려금을 학교회계로 편입하지 않고 학교발전기금회계에서 직접 집행함", "운동부 체험학습 경비 등을 학교회계 편입 없이 발전기금회계에서 직접 집행하고 출납부를 학교장 결재로 관리함", "운용계획 대비 과다 집행에도 계획을 변경하지 않고, 교육용 기자재·도서 구입비로 운동부 비품을 구입하였으며 출납명령기관 교체 시 인계인수를 누락함"]
+  },
+  {
+    id: "hoegye-09", cat: "hoegye", verified: true, freq: 0,
+    title: "수의계약 배제업체 계약 점검(사이버 감사)",
+    detail: "데이터 기반 사이버 감사로 부정당업자·수의계약 배제업체와의 수의계약 체결 여부를 점검하며, 10일 이상 지연배상금이 발생한 계약상대자는 수의계약 배제업체로 등록·관리해야 함.",
+    disposition: "",
+    basis: "「지방자치단체를 당사자로 하는 계약에 관한 법률」 / 「지방자치단체 입찰 및 계약 집행기준」 / 회계·복무·보수 분야 사이버 감사(충청북도교육청 감사관)",
+    checks: ["10일 이상 지연배상금이 발생한 계약상대자를 수의계약 배제업체로 등록하였는가?", "부정당업자 또는 수의계약 배제업체와 수의계약을 체결하지 않았는가?"],
+    docs: ["K-에듀파인 계약 체결 내역", "수의계약 배제업체 등록 내역"]
+  },
+  {
+    id: "hoegye-10", cat: "hoegye", verified: true, freq: 0,
+    title: "학교발전기금 조성·운용",
+    detail: "학교발전기금은 운용계획 수립과 학교운영위원회 심의·의결을 거쳐 조성목적 범위 내에서 집행하고, 접수·집행내역과 결산을 기한 내 공개·보고해야 함. 재정보증 설정과 사무 인계·인수도 요령에 따라 이행해야 함.",
+    disposition: "",
+    basis: "초·중등교육법 제33조 / 초·중등교육법 시행령 제64조 / 초·중등교육법 시행규칙 제3장 제3절 / 학교발전기금의 조성·운용 및 회계관리 요령(충청북도교육청)",
+    checks: ["학교발전기금운용(변경)계획을 수립하고 기금운용계획(변경) 및 결산에 대해 학교운영위원회 심의·의결을 거쳤는가", "기금운용계획서 사본을 심의·의결 후 10일 이내에 공개하였는가", "발전기금 조성이 적정한가(기부금품·발전기금 구분 조성, 일정액 할당 행위 제한, 학교운영위원회위원장 명의 준수)", "리베이트 등 반대급부를 요구하는 기부금품 등 접수 제한 대상을 확인하였는가", "발전기금 접수내역·집행내역을 분기별 종료 후 1개월 이내 학교 홈페이지 등에 공개하였는가", "발전기금을 운용계획에 따른 조성목적의 범위 내에서 집행하고, 학교회계로 전출한 발전기금의 집행내역을 학교운영위원회에 서면 보고하였는가", "결산보고서를 회계연도 종료 후 3개월 이내에 관할청에 보고하고 학교홈페이지 등을 통해 공개하였는가", "출납명령기관·출납원의 재정보증 설정(지정일로부터 30일 이내, 3,000만원 이상)과 사무 인계·인수(출납명령기관 교체 후 14일, 출납원 교체 후 7일 이내)가 적정한가"],
+    docs: []
+  },
+  {
+    id: "bangkwa-01", cat: "bangkwa", verified: true, freq: 7,
+    title: "방과후학교 운영",
+    detail: "방과후학교·돌봄 운영계획을 수립하여 프로그램별 운영시간·지도교사·강사비를 정하고, 지도일지 등으로 실제 지도 여부를 확인한 후 수당을 지급해야 하며, 강사 선발 시 성범죄 경력 및 아동학대 관련 범죄전력을 조회하고 심의를 거쳐 위탁계약을 체결해야 함.",
+    disposition: "",
+    basis: "「충북 방과후학교 운영 길라잡이, 충청북도교육청」",
+    checks: ["방과후학교 운영은 학교운영위원회 심의를 거쳐 실시하는가?(운영 계획, 내용, 절차 등의 적정 여부)", "방과후학교 예산 집행이 적정하게 되었는가?(수강료 책정 및 집행의 적정 여부, 강사료 산정 및 지급의 적정 여부, 운영비·강사료 등 집행의 적정 여부, 초과근무수당과 중복 여부, 수강료 환불규정 준수 여부)", "강사 채용 공고, 구비서류 등을 관련 지침을 준수하여 이행하고 있는가?", "강사 복무관리는 철저히 이루어지고 있는가?"],
+    docs: ["학교운영위원회 관련 서류", "방과후학교, 돌봄교실 등 운영계획서", "예결산서, 강사료 지급내역", "방과후학교 강사선정·채용 관련 서류", "방과후학교 강사복무 관련 서류"],
+    examples: ["강사 계약 시 채용신체검사서가 아닌 일반건강검진결과 통보서를 받고 성범죄 경력 및 아동학대 관련 범죄전력 조회를 실시하지 않음", "방과후 지도수당을 받는 시간과 초과근무시간이 중복되어 초과근무수당을 과다 수령함", "관외 출장일까지 지도한 것으로 지도일지를 작성하여 강사료를 과다 수령하고 프로그램 집행내역을 홈페이지에 공개하지 않음", "강사 계약 시 위·수탁 계약서를 작성하지 않고 범죄전력 조회를 미실시하거나 지연 조회함", "연장계약을 사유로 기존 서류를 활용하여 계약제교원·방과후강사의 결격사유 및 범죄전력 조회를 생략함", "자유수강권 교부 대상교가 아닌데도 수요조사서와 예산을 요구하여 목적사업비를 교부받아 강사료로 집행함", "학생 출석을 확인하지 않고 결석·출장일에도 수업한 것으로 출석부와 일지를 허위 작성하여 강사수당을 부당 수령함"]
+  },
+  {
+    id: "bangkwa-02", cat: "bangkwa", verified: true, freq: 0,
+    title: "늘봄학교·방과후학교 운영",
+    detail: "늘봄학교(초)·방과후학교(중·고)는 자체 기본계획을 수립해 학교운영위원회 심의를 거치고, 강사 선정·계약과 수강료·운영비 집행을 길라잡이에 따라 객관적·투명하게 운영해야 함.",
+    disposition: "",
+    basis: "충북 늘봄학교 운영 길라잡이 / 충북 방과후학교 운영 길라잡이 / 보조금 관리에 관한 법률 제22조",
+    checks: ["늘봄학교/방과후학교 자체 기본계획을 수립하고 학교운영위원회 심의를 거쳤는가", "강사 선정의 객관성·투명성을 확보하였는가(공개모집 원칙, 재계약 절차 준수, 학교별 외부강사 모집기준 유무)", "강사 성범죄 경력 및 아동학대관련 범죄전력을 선정 전에 확인하고 신체검사 서류를 제출받았는가", "강사 계약서에 계약기간, 강사료, 재계약·해지에 관한 사항 등 구체적인 사항을 명시하여 계약을 체결하였는가", "위탁계약서에 명시되지 않은 시설 사용료 등을 강사에게 청구하거나 계약서와 다르게 운영한 사실은 없는가", "수강료 환불규정을 수립하였는가, 수용비에서 인건비성 수당을 지급하지 않았는가", "방과후학교 자유수강권 지원대상자 선정이 적정하고 학부모 부담경비 집행결과를 학교홈페이지 등에 공개하였는가", "돌봄교실 귀가 동의서·귀가일지 작성 등 안전지침을 준수하고, 돌봄전담사 근로계약서에 휴게시간을 명시하였는가"],
+    docs: []
+  },
+  {
+    id: "geupsik-01", cat: "geupsik", verified: true, freq: 0,
+    title: "학교급식 운영 관리",
+    detail: "학교급식 운영계획을 수립해 학교운영위원회 심의(자문)를 거치고, 급식일지·검수일지 작성·보관과 알레르기 유발 식품 표시제 등 품질·안전 준수사항을 이행해야 함.",
+    disposition: "",
+    basis: "학교급식법 제16조 / 학교급식법 시행령 제2조·제4조 / 학교급식법 시행규칙 제7조 / 초·중등교육법 시행령 제60조의2 / 충청북도교육청 학교급식 기본방향",
+    checks: ["학교급식일지, 식재료검수일지 등을 작성하고 3년간 보관하고 있는가", "알레르기 유발 식품 표시제를 이행하고 있는가", "학교급식에 관한 사항에 대해 학교운영위원회 심의(자문)를 이행하였는가", "학교급식 운영계획을 수립하여 시행하고 있는가", "학교급식소위원회를 구성·운영하고 있는가"],
+    docs: []
+  },
+  {
+    id: "geupsik-02", cat: "geupsik", verified: true, freq: 0,
+    title: "학교급식 안전·위생 관리",
+    detail: "식재료 품질관리 기준을 준수하고 원산지·품질등급 결정과 브랜드 지정은 학교운영위원회 심의를 거쳐야 하며, 급식시설 소독·종사자 건강진단·보존식 보관 등 위생·안전관리를 철저히 해야 함.",
+    disposition: "",
+    basis: "학교급식법 제10조·제12조 / 학교급식법 시행령 제2조 / 학교급식법 시행규칙 제4조·제6조 / 충청북도교육청 학교급식 기본방향",
+    checks: ["식재료 품질관리 기준을 준수하고 있는가", "농·축·수산물 등 주요 식재료의 원산지와 품질등급을 학교운영위원회 심의(자문)를 거쳐 학교장이 결정하였는가", "식재료 구매 시 원산지와 규격 및 품질기준을 분명하게 제시하고 그에 따른 검수를 이행하였는가", "단일(단수업체) 생산품 및 학생 건강·안전·위생 관련 식재료의 브랜드 지정 시 학교운영위원회 심의를 거쳤는가", "급식시설 소독 실시, 급식종사자 정기건강진단 실시, 보존식 보관, HACCP 확인 등 급식 위생 및 안전관리가 적정한가"],
+    docs: []
+  },
+  {
+    id: "geupsik-03", cat: "geupsik", verified: true, freq: 0,
+    title: "학교급식 식재료 구매",
+    detail: "무상급식비 집행·정산과 식재료 구매 시 계약법령·지침을 준수하고, 적격업체 선정과 급식 운영 정보공개 등 투명한 구매 절차를 이행해야 함.",
+    disposition: "",
+    basis: "충청북도교육청 학교급식 기본방향 / 지방자치단체 입찰 및 계약 집행기준(행정안전부) / 지방자치단체 입찰시 낙찰자 결정기준(행정안전부 예규) / 식품위생법 시행령 제21조 / 충청북도교육청 안전한 학교급식 운영에 관한 조례 제5조·제8조",
+    checks: ["무상급식비 집행 및 정산이 적정한가", "공동 구매학교 간 공동 시장조사를 통하여 식재료 기초금액을 적용하였는가", "식재료 등 구매 시 계약법령 및 지침을 준수하였는가", "Non-GMO 장류(된장, 고추장, 국간장)를 이용하고 있는가", "식품위생법 시행령 제21조에 따른 집단급식소 식품판매업 신고가 수리된 자 등 적격업체를 식재료 공급업체로 선정하였는가", "충청북도교육청 안전한 학교급식 운영에 관한 조례에 따른 정보공개를 이행하였는가"],
+    docs: []
+  },
+  {
+    id: "geupsik-04", cat: "geupsik", verified: true, freq: 0,
+    title: "급식시설·기구 관리 및 영양·식생활교육",
+    detail: "일정 금액 이상 급식기구 구매 시 물품선정위원회를 거치고 시설·기구의 공제회 가입과 소방설비 설치를 이행해야 하며, 학생 식생활교육과 영양교사의 영양·식생활교육을 기준 횟수 이상 실시해야 함.",
+    disposition: "",
+    basis: "물품선정위원회 운영 기준(충청북도교육청) / 소방시설 설치 및 관리에 관한 법률 시행령 [별표4] / 식생활교육지원법 제26조 / 영양교사 교직수당 가산금 지급 규정(교육부)",
+    checks: ["추정가격 동일 물품 1천만원 이상, 다수 물품 2천만원(1회 납품 총액 기준) 이상 물품(급식기구) 구매 시 물품선정위원회를 개최하고 결과를 이행하였는가", "급식시설 개선 및 급식기구 구입 후 교육시설재난공제회에 추가 가입하였는가", "신설 급식소에 상업용 자동소화장치를 설치하였는가(2023.12.1. 이후)", "학생 기준 연 2회 이상 식생활교육을 실시하였는가", "영양교사는 월 2회 이상 식품안전 및 영양·식생활 교육을 실시하였는가"],
+    docs: []
+  },
+  {
+    id: "jeongbo-01", cat: "jeongbo", verified: true, freq: 2,
+    title: "홈페이지 관리",
+    detail: "학교 홈페이지는 항상 최신 정보로 현행화하여 운영하고, 학교재정정보와 학교운동부 운영경비 예산편성·집행내역(법인카드 세부내역 7일 이내) 등을 홈페이지에 공개해야 함.",
+    disposition: "",
+    basis: "「충청북도교육청 인터넷 시스템 설치 및 운영에 관한 조례」 / 각급기관(학교) 홈페이지 자료 현행화 등 운영관리 안내(충청북도교육청) / 「공립학교 학교회계 예산편성 기본지침」(충청북도교육청) / 「학교체육 활성화 추진 기본계획」(체육건강안전과)",
+    checks: ["홈페이지 자료를 최신 자료로 현행화하였는가?", "학교재정정보, 학교운동부 운영경비 등을 홈페이지에 공개하고 있는가? (법인카드 세부내역은 7일 이내 공개)"],
+    docs: ["홈페이지 등재 내역"],
+    examples: ["학교 홈페이지의 다수 메뉴(학교현황, 학사일정 등)를 현행화하지 않고 게시판 자료가 전무한 채 방치함", "학교운동부 대회 참가비 등 다수 건의 운영경비 집행내역을 학교 홈페이지에 공개하지 않음"]
+  },
+  {
+    id: "jeongbo-02", cat: "jeongbo", verified: true, freq: 3,
+    title: "개인정보 관리",
+    detail: "정보보안 담당관과 개인정보 보호책임자를 지정하고 내부관리계획 수립·교육을 실시해야 하며, 개인정보 처리 위탁 시 계약서·서약서를 징구하고 개인정보 포함 문서의 암호화 등 안전조치를 해야 함.",
+    disposition: "",
+    basis: "「개인정보 보호법」 제24조·제26조·제29조 / 「교육부 정보보안 기본지침」 / 「충청북도교육청 정보보안 기본지침」",
+    checks: ["정보보안 담당관 및 개인정보 보호책임자를 지정하였는가?", "개인정보보호 내부관리계획을 수립·시행하고, 정보보안 및 개인정보보호 활동·교육을 실시하였는가?", "개인정보처리 위탁 시 위탁 관련 문서(계약서) 및 서약서를 징구하고 수탁자를 관리·감독하였는가?", "정보화·정보보호사업 등 외부용역 사업 시 투입인력의 보안서약서 등 보안대책을 징구하였는가?", "영상정보처리기기(CCTV) 운영·관리 방침을 현행화하여 공개하였는가?", "주민등록번호 등 개인정보 포함 문서에 암호화 설정 등 안전조치를 하였는가?"],
+    docs: ["정보보안업무 추진계획 및 개인정보보호 내부관리계획", "정보화 용역사업 과업지시서 및 착수신고서"],
+    examples: ["계약 업체가 착수신고서 제출 시 대표·용역 투입인력의 보안서약서를 제출하지 않았는데도 이를 확인하지 않음", "CCTV 카메라 추가 설치 사실을 확인하지 못하여 영상정보처리기기 운영·관리 방침을 현행화·공개하지 않음", "성범죄 경력 조회 등 주민등록번호·성명이 포함된 다수 문서에 암호화 설정 등 안전조치를 하지 않음"]
+  },
+  {
+    id: "jeongbo-03", cat: "jeongbo", verified: true, freq: 0,
+    title: "보안제도 운영 및 비밀 관리",
+    detail: "보안담당관 지정·인계인수와 보안교육을 기준대로 실시하고, 비밀의 생산·보관·재분류·파기와 보호지역 지정·관리 등 국가보안 업무지침에 따른 보안관리를 이행해야 함.",
+    disposition: "",
+    basis: "충청북도교육청 국가보안 업무지침 제3조~제9조, 제14조, 제19조~제21조, 제27조, 제38조, 제46조~제49조, 제60조~제63조",
+    checks: ["보안담당관 인계인수 및 교체 후 7일 이내 도교육청 통보가 적정한가(학교는 통보 생략), 분임보안담당관 및 정보보안담당관을 지정하였는가", "반기별 1회 이상 정기 보안교육과 신규임용직원·전입자에 대한 임용(전입) 후 5일 이내 보안교육을 실시하였는가", "자체 생산 비밀 원본에 연 2회(6월, 12월) 검토 필 표시를 하고 사이버·보안 진단의 날(매월 세 번째 수요일)에 재분류검토를 실시하였는가", "비밀을 철제 2중 캐비닛(잠금장치)에 보관하고 외부에 보관책임자를 표시하였는가, 일반문서와 혼합 보관하지 않았는가", "비밀관리기록부 기재요령과 보존연한을 준수하고 비밀 인계인수 시 마감·기재를 적정하게 하였는가", "비밀 안전반출 및 파기계획을 작성하고 반영사항이 적정한가", "보호지역 지정·구분·표시와 관리책임자 지정이 적정하고 통제구역 출입통제대장을 비치·활용하고 있는가", "신원조사 대상자의 신원조사(회보)서를 확인하고 보존하고 있는가"],
+    docs: []
+  },
+  {
+    id: "jeongbo-04", cat: "jeongbo", verified: true, freq: 0,
+    title: "정보시스템 구축·운영",
+    detail: "정보시스템을 신·증설하는 경우 정보화사업 사전협의, 소프트웨어사업 과업심의, 보안성 검토 등 사업 추진 절차를 준수하고, 원가 산정 시 소프트웨어사업 대가산정 기준을 적용해야 함.",
+    disposition: "",
+    basis: "충청북도교육청 정보화 추진에 관한 조례 / 충청북도교육청 정보보안 기본지침 / 행정기관 및 공공기관 정보시스템 구축·운영 지침",
+    checks: ["정보시스템을 신·증설하는 경우 사업 추진 절차를 준수하였는가", "예산편성 전 정보화사업 사전협의를 거쳤는가(학교 제외)", "사업발주 전 소프트웨어사업 과업심의 및 전자정부 성과관리 정보화사업 사전협의를 이행하였는가(학교 제외)", "사업발주 전 보안성 검토를 실시하였는가", "정보시스템 사업의 원가 산정 시 소프트웨어사업 관련 대가산정 기준을 적용하였는가"],
+    docs: []
+  },
+  {
+    id: "sisul-01", cat: "sisul", verified: true, freq: 6,
+    title: "시설공사 계약",
+    detail: "공사는 경미한 공사를 제외하고 공사내용에 상응한 업종을 등록한 업자가 시공해야 하고, 전체 사업내용이 확정된 단일공사는 시기적·공사량 분할 계약을 할 수 없으며 추정가격 2천만원 초과 공사는 지정정보처리장치를 이용하여 낙찰자를 결정해야 함.",
+    disposition: "",
+    basis: "「전기공사업법」제3조, 제11조 / 「건설산업기본법」제8조, 제16조, 제25조 / 「건설산업기본법 시행령」제7조, 제8조 / 「지방자치단체를 당사자로 하는 계약에 관한 법률」제22조 / 「지방자치단체를 당사자로 하는 계약에 관한 법률 시행령」제8조, 제11조, 제25조, 제30조, 제51조, 제74조, 제77조 / 「지방자치단체 입찰 및 계약 집행기준, 행정안전부 예규」 / 회계분야 청렴문화 정착을 위한 수의계약 업무 개선방안(충청북도교육청 재무과-11793, 2014.5.13.) / 수의계약(1인 수의계약 금액 기준) 업무 개선방안 알림(충청북도교육청 재무과-25707, 2018. 10. 11.)",
+    checks: ["입찰의 참가자격 또는 계약상대자 적정 여부(공사발주의 전문업체 적정 및 건설업면허 소지 여부, 예정금액 1천 5백만원 이상의 전문공사는 해당분야 전문건설업 면허소지 여부(일반건설업 5천만원 이상), 전기·소방·통신·폐기물처리(100톤 이상)·가스시설 공사·난방공사 등의 분리발주 여부, 입찰공고 등에서 요구한 자격과 동등 이상의 자격 소지 여부)", "추정가격 2천만원 초과 공사에 대하여 지정정보처리장치를 이용한 입찰(공개견적서 제출) 및 전자계약 이행 여부(계약 보증금 징구 여부)", "계약 사항, 설계도서 등에 따른 계약집행의 적정 여부", "공사 설계변경의 적정 여부(공사 변경금액 산출의 적정 여부)", "예정가격 작성 적정 여부(거래실례가격, 원가계산에 의한 가격 등)"],
+    docs: ["계약 관련 서류", "변경계약 관련 서류"],
+    examples: ["사업 시기가 비슷한 동일 공종의 석면 관련 청소 용역을 분할하여 각각 1인 수의계약을 체결함", "동일 시기 공사를 분할하여 동일업체와 각각 1인 수의계약을 체결함", "공사내용에 상응하는 업종 미등록 업체와 공사 계약을 체결하고 하자담보책임기간을 기준보다 짧게 잘못 설정함", "폐기물처리 확인증을 제출받지 않고 폐기물처리비를 감액하지 않은 채 계약금액 전액을 지급함", "해당 전문공사업 면허가 없는 업체와 계약을 체결하고 착공신고서를 시스템에 등록하지 않아 실제 착공일자를 확인할 수 없게 함", "전문건설업 면허 미등록 업체와 1천5백만원 이상 전문공사 수의계약을 체결하고 인지세 납부 증명, 계약보증서, 하자보수보증금 등을 징구하지 않았으며 하자보수관리부를 기록·유지하지 않음"]
+  },
+  {
+    id: "sisul-02", cat: "sisul", verified: true, freq: 8,
+    title: "시설공사 집행",
+    detail: "설계도서를 정확히 작성하고 설계대로 시공되는지 공사감독해야 하며, 산업안전보건관리비·환경보전비·폐기물처리비·각종 보험료 등 계상 비용은 사용실적을 확인하여 정산하고, 선금 지급 시 한도와 보증·보험기간을 준수해야 함.",
+    disposition: "",
+    basis: "「건설산업기본법」제22조 및 같은 법 시행령 제26조의2 / 「건설기술진흥법」제66조 / 「지방자치단체를 당사자로 하는 계약에 관한 법률」제16조, 제17조 / 「건설업 산업안전보건관리비 계상 및 사용기준, 고용노동부 고시」 / 「지방자치단체 입찰 및 계약 집행기준, 행정안전부 예규」 / 「사회보험의 보험료 적용 기준, 산업통상자원부 고시」 / 「건설폐기물의 재활용촉진에 관한 법률」제15조 / 「건설폐기물의 재활용촉진에 관한 법률 시행령」제11조",
+    checks: ["계약 시 계상된 비용에 대한 확인, 정산의 적정 여부(표준안전관리비(공사금액 2천만원 이상) 및 환경보전비 계상 시 사용·정산 적정 여부, 산재보험료 계상 및 가입 확인 여부, 고용보험료 계상 및 가입 확인 여부, 폐기물처리비 계상 시 정산·위탁처리내역서 등 확인 여부, 30일 이상 공사에 대하여 국민연금보험료·국민건강보험료·노인장기요양보험료의 계상 및 정산 여부)", "법령과 계약 사항에 따라 집행되었는지 여부(시방서, 내역서, 관급자재 납품 조건 등에 합치된 집행 여부, 선금·기성금 신청 및 지급의 적정 여부)", "대가 지급의 적정 여부(법령 지급기한 5일 이내 준수 및 지급의 적정 여부, 지연배상금율의 적정 적용 여부, 하자검사 적정 이행 여부(연 2회 이상, 하자검사 조서 작성 및 계약금액 3천만원 대상 하자만료조서 발급), 하자보증금 계약금액 3천만원 이하 납부 면제할 경우 하자 이행각서 징구)", "건설 폐기물 처리의 적정 여부(위탁 처리하는 건설폐기물의 양이 100톤 이상인 경우 건설공사와 건설폐기물 처리용역을 분리하여 발주)"],
+    docs: ["계약 및 착공 관련 서류", "지출내역서 등 관련 서류", "정산 관련 서류"],
+    examples: ["준공 시 임시소방시설 미설치분과 계약물량 미달 시공분을 정산 감액하지 않고 공사비를 과다 지급함", "하자담보책임기간 중 연 2회 이상 정기 하자검사를 실시하지 않고 하자만료검사와 하자보수관리부 기록·유지를 하지 않음", "산업안전보건관리비 사용불가 항목을 준공 시 정산 감액하지 않고 과다 지급함", "미시공분을 준공 시 정산 감액하지 않고 공사비를 과다 지급함", "미시공 자재와 미사용 폐기물처리비를 공사감독 소홀로 정산 감액하지 않고 과다 지급함", "사고이월 공사의 선금을 당해연도 이행금액이 아닌 총 계약금액으로 산정하여 한도 초과 지급하고 계약기간 연장 시 선금 보증서를 제출받지 않음", "철거 공법 변경(인력+기계철거)에 따른 정산 감액을 하지 않고 과다 지급함", "관급자재 물품검사 시 규격 감소를 확인하고도 정산 감액하지 않고 과다 지급함"]
+  },
+  {
+    id: "sisul-03", cat: "sisul", verified: true, freq: 2,
+    title: "화재사고 예방",
+    detail: "실별 화기책임자 지정과 분기별 점검, 전 교직원·학생이 참여하는 소방훈련 및 재난안전교육 실시, 화재 취약시설·재활용품 보관창고 관리, 당직근무자 순찰 등으로 화재사고를 예방해야 함.",
+    disposition: "",
+    basis: "「소방시설 설치 및 관리에 관한 법률」 제24조 / 「공공기관의 소방안전관리에 관한 규정」 제4조·제7조·제9조·제11조 / 교육시설 화재예방 대책 알림(충청북도교육청 재무과) / 「학교현장 재난유형별 교육·훈련 매뉴얼」(체육건강안전과)",
+    checks: ["실별 화기책임자 및 소방안전관리자가 분기별로 화재 예방 실별 점검을 실시하고, 점검표를 학교(기관)장 결재 후 누철 보관하며 미흡사항을 조치하였는가?", "소방안전관리자는 월 1회 이상 업무 수행 기록표를 작성·관리하고 있는가?", "재난안전교육 및 소방훈련을 적정하게 실시하고, 시간제 강사를 포함한 모든 교직원과 학생이 참여하였는가?", "학생 대상 준법교육·화재예방교육·생활지도를 분기별 1회 실시하고 증빙자료를 누철 보관하고 있는가?", "화재 취약시설 관리가 적정한가? (소방차 진입 가능 여부, 소화전 작동 여부, 쓰레기장·재활용품 보관창고 정리 실태)", "일과 후 시설 내 외부인 무단출입 통제와 당직근무자의 순찰 활동이 적정한가?", "화재사고 발생 시 응급조치 및 보고가 적정하였으며, 교육시설재난공제회에 누락 재산 없이 가입하였는가?"],
+    docs: ["화재 예방 실별 점검표", "재난안전교육 및 소방훈련 관련 서류", "당직근무일지", "CCTV 녹화 영상", "소방시설등 점검표"],
+    examples: ["소방계획 수립 시 실별 정·부 화기책임자를 지정하지 않고 교직원에게 공람하지 않았으며, 소방훈련을 실시하지 않고 부적합 유도등 설치를 방치함", "건물 옆에 나뭇가지·낙엽 등 가연물을 모아 방치하고 엘리베이터 안전 이용 안내 표지를 두지 않는 등 시설관리를 소홀히 함"]
+  },
+  {
+    id: "sisul-04", cat: "sisul", verified: true, freq: 1,
+    title: "화장실 관리",
+    detail: "공중화장실 대변기 칸막이 안에는 휴지통을 둘 수 없고 여성용 칸막이에는 위생용품 수거함을 두어야 하며, 이성 관리인 출입 시 안내표지판을 비치하고 화장실 관리대장(관리카드)을 기록·비치해야 함.",
+    disposition: "",
+    basis: "「공중화장실 등에 관한 법률」 제7조·제8조·제9조 / 같은 법 시행령 제7조 / 「충청북도교육청 화장실 관리조례」 제5조·제7조",
+    checks: ["대변기 칸막이 안에 휴지통이 설치되어 있지는 않은가?", "여성용 대변기 칸막이 안에 위생용품 수거함이 설치되어 있는가?", "청소 또는 보수 중임을 알리는 안내표지판이 있는가?", "화장실 관리대장 또는 관리카드를 화장실에 비치하였는가?"],
+    docs: ["화장실 현장 점검"],
+    examples: ["건물·야외 화장실에 화장실 관리대장 또는 관리카드를 비치하지 않음"]
+  },
+  {
+    id: "sisul-05", cat: "sisul", verified: true, freq: 0,
+    title: "학교안전사고 예방 및 안전교육",
+    detail: "학교안전사고 예방계획을 수립해 학교운영위원회 심의를 거치고, 학생·교직원·교육활동참여자 대상 안전교육과 환경위생·식품위생 점검을 기준에 따라 실시해야 함.",
+    disposition: "",
+    basis: "학교안전사고 예방 및 보상에 관한 법률 제4조·제5조·제8조 / 같은 법 시행령 제10조의2 / 교육시설 등의 안전 및 유지관리 등에 관한 법률 제13조 / 학교보건법 제4조~제4조의3·같은 법 시행규칙 제3조~제5조 / 학교안전교육 실시 기준 등에 관한 고시(교육부)",
+    checks: ["학교안전사고 예방 학교계획을 수립하고 학교(유치원)운영위원회 심의를 거쳤는가", "학기별 교육활동 안전대책을 마련하여 점검·확인하고 학교(유치원)운영위원회에 보고하였는가", "'학교 안전점검의 날'을 운영하고 있는가", "학생·교직원·교육활동참여자 대상 학교안전교육계획을 수립하여 실시하였는가(매년 학생안전교육 실시 포함)", "교직원 안전교육을 이수하였는가(교직원 3년 15시간, 계약제 교직원 학기당 2시간 이상, 교육활동참여자 매 학년도 1회 이상)", "환경위생 및 식품위생 정기점검(매 학년 1회 이상, 공기 질은 상·하반기 1회 이상)과 사유 발생 시 특별점검을 실시하였는가", "먹는물 관리계획을 수립하고 수질검사를 실시하였는가"],
+    docs: []
+  },
+  {
+    id: "sisul-06", cat: "sisul", verified: true, freq: 0,
+    title: "화재예방 및 재난예방 관리",
+    detail: "실별 화기책임자와 소방안전관리자의 분기별 화재예방점검, 소방훈련·교육, 소방계획서 수립 등 화재예방 체계를 갖추고, 재난위험시설물 관리와 재난대피 매뉴얼 비치 등 재난예방 조치를 이행해야 함.",
+    disposition: "",
+    basis: "화재의 예방 및 안전관리에 관한 법률 제17조·제24조 / 같은 법 시행령 제27조 / 공공기관의 소방 안전관리에 관한 규정",
+    checks: ["실별 화기책임자 및 소방안전관리자가 분기별 화재예방점검을 실시하였는가", "소방훈련 및 교육을 실시하였는가", "화재 취약시설(쓰레기장 등) 관리 실태가 적정한가(쓰레기분리수거장 시건장치 설치 및 시건 포함)", "소화기 및 소화전이 정상 작동 상태인가", "재난(화재) 시 학교현장 재난 유형별 교육·훈련 매뉴얼을 비치하고 훈련을 실시하였는가", "재난시설물을 적기에 보고·처리하고 재난위험시설물을 관리하고 있는가", "재해보조금·예비비를 적정하게 사용하였는가", "소방계획서를 수립하였는가"],
+    docs: []
+  },
+  {
+    id: "sahak-01", cat: "sahak", verified: true, freq: 2,
+    title: "[법인] 교원 임용",
+    detail: "교원의 신규 채용은 공개전형으로 하여야 하며 지원 마감일 30일 전까지 일간신문 또는 정보통신매체를 통해 채용분야·채용인원·지원자격 등을 공고하고, 공개전형 시행에 필요한 사항은 교원인사위원회 심의를 거쳐 임용권자가 정해야 함. 신규교사 채용은 교육청 위탁 채용을 적극 추진하되 법인이 자체 추진할 경우 관계 법령을 숙지하여 인사관리의 공정성과 투명성을 제고해야 함.",
+    disposition: "",
+    basis: "｢사립학교법｣ 제53조의2, ｢사립학교법 시행령｣ 제21조 / ｢2025학년도 사립 중등학교 신규교사 교육청 위탁채용 계획 및 수요 조사 실시 안내(교원인사과-8829, 2024. 7. 26.)｣",
+    checks: ["교원 신규채용 시 30일 전에 정보통신 매체를 통해 공고하였는가?", "공개 전형의 시행에 관하여 필요한 사항은 교원인사위원회의 심의를 받았는가?", "신규교사 채용 시 시험운영의 효율성 및 투명성은 확보되었는가?"],
+    docs: ["교원임용 서류"],
+    examples: ["교사 신규채용 시 공개전형 시행에 필요한 사항에 대해 교원인사위원회 심의를 거치지 않고 교장·이사장 결재만으로 채용을 실시하고, 채용 관련 문서를 비전자 문서로 등록하거나 수기문서 등록대장도 구비하지 않음", "신규교사 임용후보자 선정경쟁시험 공고를 30일이 아닌 24일만 공고하고, 징수근거 없이 지원자에게 전형료를 징수하였으며, 교원인사위원회 심의 없이 신규교사를 임용하고 임용 후 7일 이내 임용 보고를 지연함"]
+  },
+  {
+    id: "sahak-02", cat: "sahak", verified: true, freq: 2,
+    title: "[법인] 법인 이사회",
+    detail: "법정부담금 전액을 부담하지 못하는 법인은 수익용 기본재산 수익금 중 전출 가능한 최대한의 법정부담금을 편성한 후 사용한도액 내에서 법인운영비를 편성·집행해야 하며, 임원 결원은 2월 이내 보충하고 임원 선임은 관할청 승인을 얻고 인적사항을 홈페이지에 상시 공개해야 함. 이사회 소집은 회의 7일 전에 통지하고 회의일부터 10일 이내에 회의록을 학교 홈페이지에 게재하여 1년 동안 공개해야 함.",
+    disposition: "",
+    basis: "｢사학기관 예산편성 지침, 충청북도교육청｣ 및 ｢학교법인운영 필요경비 사용 한도액 조정 알림, 재정복지과-31389(2023. 12. 22.)｣ / ｢사립학교법｣ 제17조, 제20조, 제24조 / ｢사립학교법 시행령｣ 제8조의3",
+    checks: ["법정부담금을 전액 부담하고 있는가?", "임원 중 결원이 생겼을 경우 2개월 이내 보충하였는가?", "임원 선임 시 관할청의 승인을 얻었으며 인적 사항을 홈페이지에 상시 공개하고 있는가?", "이사회 소집은 회의 7일 전까지 통지하였는가?", "회의 개최 후 10일 안에 학교 홈페이지에 회의록을 공개하였는가?"],
+    docs: ["법인회계 예산서 및 회계 관련 서류", "학교법인 정관 규정", "이사회 회의 서류"],
+    examples: ["수익용 기본재산 총수입액에서 공제경비를 제외한 순수익액의 80%를 소속학교 학교운영경비로 전출하여야 하는데도 이를 미이행함", "법인회계 예산서를 관할청에 미보고하거나 최장 118일까지 지연 보고하고, 이사회 회의록을 학교 홈페이지에 미공개하거나 최장 403일 지연 공개함"]
+  },
+  {
+    id: "sahak-03", cat: "sahak", verified: true, freq: 3,
+    title: "[법인] 법인회계 예산편성 및 집행",
+    detail: "법인의 재무와 회계는 건전하게 운영하고 예산과목 체계를 준수하여 적정 예산과목으로 편성·집행해야 하며, 재화·용역 대가 지급 시 신용카드 매출전표·세금계산서 등 증명서류를 받아 보관해야 함. 기본재산의 매도·증여·교환·용도변경·담보제공 등은 관할청의 허가를 받아야 하고, 경쟁입찰 낙찰자는 예정가격 이하 최저가격 입찰자 순으로 계약이행능력을 심사하여 결정해야 함.",
+    disposition: "",
+    basis: "｢사학기관 재무·회계 규칙｣ 제4조, 제15조 / ｢법인세법｣ 제116조제2항, ｢부가가치세법｣ 제32조 / ｢사학기관 예산편성 지침, 충청북도교육청｣ / ｢국가를 당사자로 하는 계약에 관한 법률 시행령｣ 제42조",
+    checks: ["법인회계 예산 편성기준에 부합하게 집행하였는가?", "법인회계 예산 집행절차를 준수하였는가?", "법인회계 예산 집행시 관련 증빙자료는 제대로 구비했는가?", "낙찰자 결정시 예정가격이하로서 최저가격으로 입찰한 자의 순으로 당해 계약이행능력을 심사하여 낙찰자를 결정하였는가?"],
+    docs: ["법인회계 예산 편성 및 집행 관련 서류"],
+    examples: ["법인카드로 유류비 예산을 집행하면서 사전 지출품의 없이 사후에 일괄 수기 내부결재문서를 작성하여 집행함", "이사회에서 이사장 본인을 수익사업 관리인으로 선임하고 보수를 지급하면서 관리인의 근무조건 등 복무에 관한 사항을 규정하지 않아 수익사업 업무의 적정 수행 여부를 확인할 수 없게 함", "수익용 기본재산(농경지)을 임대하면서 재산평정가격의 1% 이상으로 대부료를 정해야 하는데도 이에 미달하는 금액으로 사용·수익 허가하여 손실을 발생하게 함"]
+  },
+  {
+    id: "sahak-04", cat: "sahak", verified: true, freq: 6,
+    title: "[사립학교] 교비회계 예산 편성",
+    detail: "학교 회계는 건전하게 운영하고 모든 수입·지출을 예산에 편입해야 하며, 세출예산은 정한 목적 외에 사용할 수 없고 예상하지 못한 수입 등은 차기 추경예산에 조정 편성해야 함. 명시이월은 학교운영위원회 자문(심의)과 이사회 심의를 거쳐야 하고, 간주처리는 목적지정 사업비에 한해 가능하며 확정 예산은 15일 이내 관할청 보고 및 10일 이내 학교 누리집 공개 등 편성 시기·절차를 준수해야 함.",
+    disposition: "",
+    basis: "｢사학기관 재무·회계 규칙｣ 제4조, 제16조, 제21조 / ｢사학기관 예산편성 지침, 충청북도교육청｣ / ｢학교회계 실무 매뉴얼, 충청북도교육청｣",
+    checks: ["회계운영의 기본원칙 지켰는가?", "예산을 목적 외로 사용하지 않았는가?", "예산 이월 시 관련 지침을 준수하였는가?", "예산편성 시기 및 절차를 준수하였는가?", "예산편성 이후 공개 등은 적절하였는가?", "예산편성 시 원가통계비목을 맞게 편성하였는가?", "예산편성 시 세부 산출내역을 구체적으로 기재하였는가?"],
+    docs: ["교비회계 예산편성 관련 서류", "교비회계 이・전용 관련 서류"],
+    examples: ["추경예산을 편성하지 않아 세출예산 초과 집행을 발생시키고, 회계서류·장부를 작성·관리하지 않아 수입·지출액 확인이 불가능하게 하였으며, 학교 차량이 아닌 차량 주유 및 별개 기관 난방용 등유 구입 등 교비회계를 목적 외로 지출함", "교비회계 예산현액과 세입결산액 간 차액이 수천만 원에서 3억 원대까지 발생하는데도 조정 편성하지 않음", "학교운영위원회·이사회에 확정되지 않은 예산안을 제출하고 심의·의결 금액과 불일치하게 예산을 확정하였으며, 간주처리 대상이 아닌 자체재원 사업을 간주처리 증액편성하고 심의 없이 명시이월 처리하거나 명시이월 대상을 사고이월 처리함", "회계연도 중 교부된 목적사업비를 정리추경에 미반영하고 출납폐쇄기한 종료 후 추경으로 확정하고도 관할청에 보고하지 않았으며, 업무추진비성 경비를 교육운영비 목에서 집행하여 예산편성 목적에 맞지 않게 사용함", "간주처리 편성요건에 해당하지 않는 자체 사업 조정을 간주처리 예산으로 편성하고, 세출예산을 산출기초 없이 총액 계상하였으며, 명시이월액을 학교운영위원회 심의 및 이사회 심사·의결 없이 처리하고 일반업무추진비 계상한도를 초과 편성함", "최종 추경예산 예산총칙에 명시이월액·계속비이월액을 명시하지 않고 학교운영위원회 자문 및 이사회 심사 없이 명시이월·계속비이월 처리하였으며, 간주처리할 수 없는 자체 재원 증감 등을 간주처리 예산으로 편성함"]
+  },
+  {
+    id: "sahak-05", cat: "sahak", verified: true, freq: 9,
+    title: "[사립학교] 교비회계 예산 집행",
+    detail: "교비회계에 속하는 수입이나 재산은 다른 회계로 전출·대여하거나 목적 외로 사용할 수 없으며, 회계관계직원은 임명일부터 30일 이내 재정보증보험에 가입해야 함. 법인카드 잔액 대조, 카드 인센티브 연 1회 이상 세입조치, 유휴자금 자금운용기록부 관리, 추정가격 2천만원 초과 계약의 지정정보처리장치(G2B·S2B) 2인 이상 견적, 사전 징수결정 등 집행 절차를 준수해야 함.",
+    disposition: "",
+    basis: "｢사립학교법｣ 제29조 / ｢사립학교법시행령｣ 제14조 / ｢지방회계법｣ 제50조 / ｢회계관계직원 등의 책임에 관한 법률｣ 제2조 / ｢사학기관 재무ㆍ회계 규칙｣ 제4조, 제21조, 제25조, 제26조, 제32조, 제53조의3 / ｢충청북도교육비특별회계 재무회계 규칙｣ 제154조의2~4, 제84조 / ｢사학기관 예산편성 지침, 충청북도교육청｣ / ｢학교회계 실무매뉴얼, 충청북도교육청｣ / ｢2017. 충청북도교육비특별회계 자금운용 관리 철저(재무과-15284, 2017. 7. 13.)｣ 및 ｢2017. 각급 학교 자금 운용 컨설팅 결과 알림(재무과-18643, 2017. 8. 28.)｣ / ｢지방교육재정 집행 독려를 위한 물품 1인 수의계약 한도 조정(재무과-28441, 2019. 11. 8.)｣ / ｢수학여행·수련활동 등 현장체험학습 운영매뉴얼, 충청북도교육청｣ / ｢직무대리규정｣",
+    checks: ["교비회계 수입을 회계로 전출ㆍ대여하거나 목적 외로 사용한 사실이 있는가?", "재정보증보험 가입 여부 및 기간이 맞게 설정되었는가?", "법인카드 통장잔액과 신용카드 이용대금 결제액이 일치하는가?", "세입세출외현금은 보증금, 보관금, 그밖의 잡종금으로 구분하여 출납원이 관리하고 있는가?", "신용카드 사용으로 발생한 인센티브를 연 1회 이상 세입 조치했는가?", "자금운용기록부를 비치하여 기록하고 만기 해지일을 준수하였는가?", "추정가격 2천만 원 초과 공사, 물품, 용역 계약에 대해 1인 수의계약으로 집행한 사실이 있는가?", "수의계약 및 신용카드 사용내역, 업무추진비 집행내역, 수익자부담경비 정산내역 등을 공개하였는가?", "지출품의 및 원인행위 시, 사전에 학교장의 결재를 득하였는지, 학교장 부재시 직무대리자의 원인행위 결재를 득하였는가?"],
+    docs: ["교비회계 집행 관련 서류"],
+    examples: ["법인 임원변경 등기료와 법인 재산세를 법인회계가 아닌 교비회계에서 납부하고, 회계관계직원에 대해 재정보증보험을 가입하지 않음", "사업비를 산출기초 없이 총액 편성하고 업무추진비성 경비를 계상한도 초과 집행하였으며, 워크숍 추진 시 공무원 여비 규정을 초과한 숙박비·식비를 지급하고 사업 목적과 무관한 체험비 등으로 목적 외 사용함", "법인카드 계좌 예금이자를 교비회계로 세입처리하지 않고 통장 잔액과 결제액 일치 여부 등 법인카드 관리 점검을 실시하지 않았으며, 학교장 부재 중 직무대리 지정 없이 지출원인행위를 교감 결재로 처리함", "수능 응시수수료를 세입세출외현금 계좌로 수납하고 장부를 작성하여 출납 처리해야 함에도 회계장부 처리나 내부결재 없이 교비회계 계좌에 수납하고 직접 납부·반환함", "법인카드 포인트를 교비회계로 세입 처리하지 않고, 만기 도래 정기예금 재예치 건을 자금운용기록부에 등록하지 않음", "수입일계표를 지연 확정하고, 사전 징수결정하여야 하는 건을 사후 징수결의하였으며, 납부금액이 없어 권리 내용을 확정할 수 없는 건을 징수결의함", "학교급식비·기숙사비·졸업앨범비 등 수익자부담경비를 상세내역을 알 수 있도록 정산하지 않고 정산결과를 학부모 공개 및 학교 홈페이지에 탑재하지 않음", "학교급식용 부식류 등에 대한 지출품의서를 사전에 작성·결재받지 않고 물품 납품 이후 학교장의 사후 결재를 받음", "추정가격 2천만 원 초과 용역계약을 지정정보처리장치를 통한 2인 이상 견적 없이 수기 견적으로 1인 수의계약 체결함"]
+  },
+  {
+    id: "sahak-06", cat: "sahak", verified: true, freq: 7,
+    title: "[사립학교] 공사 계약 및 집행",
+    detail: "공사 계약 시 거래실례가격·원가계산 등 기준에 따라 예정가격을 결정하고, 단일공사를 분할 계약할 수 없으며, 낙찰자는 예정가격 이하 최저가격 입찰자 순으로 계약이행능력을 심사하여 결정해야 함. 공사예정금액 1천5백만원 이상은 전문건설업 등록 업체와 계약하고, 하자담보책임기간 설정·검사, 산업안전보건관리비·폐기물처리비 정산, 지체상금 부과, 산재보험 가입 등을 준수해야 함.",
+    disposition: "",
+    basis: "｢국가를 당사자로 하는 계약에 관한 법률｣ 및 같은 법 시행령 / ｢건설산업기본법｣ 제16조, 제25조, 제28조 / ｢건설산업기본법 시행령｣ 제7조 및 [별표1] 건설업의 업종과 업종별 업무내용 / ｢정부입찰·계약 집행기준, 기획재정부 계약 예규｣ 제33조~제39조, 제91조~제94조 / ｢산업안전보건법｣ 제72조 / ｢폐기물관리법｣ 제17조 / ｢산업재해보상보험법｣ 제6조",
+    checks: ["계약 시, 예정가격 산정 기준에 따라 예정가격이 결정되었는가?", "동일 구조물공사 및 단일공사를 특별한 사유 없이 분리하여 계약하지 않았는가?", "공사예정금액이 1천 5백만원 이상인 경우 공사내용에 상응하는 업종을 등록한 건설업자에게 적정하게 발주하였는가?", "관계법령을 준수하여 낙찰자 결정방법이 정당하게 결정되었는가?", "공사계약 이행기간이 연장되었을 때 지체상금을 정당하게 부과하였는가?", "공사 종류별 하자담보책임기간을 설정하였는가?", "계약이행 내용의 전부(일부)가 계약에 위반되었을 때 시정 조치를 하였는가?", "산업안전보건관리비를 다른 목적으로 사용하거나 증빙서류 부족과 사용하지 않은 금액에 대하여는 이를 계약금액에서 감액 조정하거나 반환을 요구하였는가?", "폐기물 처리 비용이 적정하게 집행되었는지 확인하였는가?", "산재보험에 가입하였는가?"],
+    docs: ["공사 계약 관련 서류", "공사 집행 관련 서류"],
+    examples: ["1천5백만원 이상의 전문건설업 공사에 해당하는 리모델링 공사 등을 실내건축공사업 면허가 없는 일반사업자와 계약함", "공사감독 소홀로 미시공분·미사용 폐기물처리비·산업안전보건관리비 부적정 사용분 등을 준공 시 정산 감액하지 않고 공사대금을 과다 지급함", "산업안전보건관리비 사용불가 항목 및 증빙 없는 항목을 정산하지 않고 공사비를 과다 지급하였으며, 하자담보책임기간 중 하자검사를 실시하지 않고 하자검사조서·하자보수관리부를 기록·유지하지 않음", "동일구조물·단일공사에 해당하는 사업을 물품과 공사로 분할하여 1인 수의계약을 체결하고, 폐기물처리비 증빙자료 없이 공사대금을 과다 지급하였으며, 도급계약 체결 시 수입인지를 첨부하지 않음", "하자담보책임기간 만료 14일 전부터 만료일까지의 기간 중 최종검사를 실시하지 않고, 최종검사 후 계약상대자에게 하자보수 완료 확인서를 즉시 발급하지 않음", "내역서와 다르게 시공(장비 변경, 가설창고 미설치)된 사항을 확인하지 못하고 공사대금을 과다 지급함", "지정정보처리장치를 통한 2인 이상 견적 공고 없이 물품을 1인 수의계약하고, 전문공사 미등록 업체와 공사를 1인 수의계약 체결함"]
+  },
+  {
+    id: "sahak-07", cat: "sahak", verified: true, freq: 4,
+    title: "[사립학교] 물품 관리",
+    detail: "물품관리자·물품출납원 및 물품사용자는 선량한 관리자로서의 주의와 의무를 다해야 하며, 물품관리자는 2년마다 학년도 말 기준으로 재물조사를 실시하여 사용 불가능한 물품에 대한 불용결정 등을 하고 비품수급부를 비치해야 함.",
+    disposition: "",
+    basis: "｢사학기관 재무·회계 규칙｣ 제49조, 제50조, 제51조",
+    checks: ["물품 구매 시 물품대장에 등재하였는가?", "재물조사를 2년마다 정기적으로 실시하였는가?"],
+    docs: ["물품대장", "재물조사 관련 서류"],
+    examples: ["교비회계에서 구입·검수한 자산성 물품을 비품출납 및 운용카드에 등재하지 않고 소모품으로 처리함", "구입 물품을 비품출납 및 운용카드에 등재하지 않고, 불용결정·처분한 물품의 카드를 정리하지 않았으며, 정기재물조사 계획을 수립하고도 전수조사를 실시하지 않아 물품 보유 여부 등을 파악할 수 없게 함", "다년간 구입한 자산성 물품 다수를 비품출납 및 운용카드에 등재하지 않거나 감사 지적 후 소급 등재함", "자산성 물품을 비소모품 출납카드·운용카드에 등재하지 않거나 소모품 처리하고, 물품보유현황 목록표와의 상이를 파악하지 않았으며, 해당 물품의 교육시설공제 가입을 누락함"]
+  },
+  {
+    id: "sahak-08", cat: "sahak", verified: true, freq: 3,
+    title: "[사립학교] 시설 및 시설적립금 관리",
+    detail: "소방안전관리자는 소방계획 수립·시행 및 소방시설 유지·관리 업무를 성실히 수행하고 교사(校舍)는 환경위생 등을 유지·관리해야 하며, 시설적립금은 자체계획을 수립하여 학교운영위원회 심의 후 교육청에 보고하고 세입세출외현금(보관금)으로 예치하는 등 목적에 맞게 운용·관리해야 함. 장애인전용주차구역·화장실 관리, 영상정보처리기기(CCTV) 안내판 설치 및 운영·관리 방침 게재 등도 준수해야 함.",
+    disposition: "",
+    basis: "｢학교보건법｣ 제4조 / ｢공공기관의 소방안전관리에 관한 규정｣ 제2조, 제5조 및 ｢화재의 예방 및 안전관리에 관한 법률｣ 제24조제5항 / ｢사학기관 재무ㆍ회계 규칙｣ 제22조의2 / ｢사학기관 예산편성 매뉴얼 및 지침, 충청북도교육청｣ / ｢장애인ㆍ노인ㆍ임산부등의편의증진보장에관한법률시행령｣ 제4조 및 같은 법 시행규칙 제2조 / ｢충청북도교육청 화장실 관리 조례｣ 제7조 / ｢개인정보 보호법｣ 제25조, 같은 법 시행령 제23조, 제25조 / ｢행정절차법｣ 제46조",
+    checks: ["화재 발생 시 소방시설 작동에 문제가 없는가?", "교사의 청결 상태가 불량하지 않는가?", "건축물대장 미등재 및 미등기 상태의 무허가 건축물은 없는가?", "시설적립금 자체계획을 수립하여 학교운영위원회 심의를 받고 교육청에 보고하였는가?", "학교회계 결산 시 시설적립금의 적립 및 집행현황을 학교운영위원회 및 교육청에 보고하는가?", "적립목적, 운용 절차는 적정하였는가?", "시설적립금 관리대장은 비치·관리하는가?", "장애인전용주차구역은 규정에 맞게 관리되고 있는가?", "화장실 관리대장 또는 관리 카드를 비치하였는가?", "영상정보처리기기(CCTV) 운영ㆍ관리 방침을 준수하였는가?"],
+    docs: ["건축물대장 및 시설 관련 서류", "학교 내 시설물 등 관리 상태 실사 확인", "학교 내 소방시설 관리 실태 점검", "건축물 대장", "시설적립금 계획 및 적립금 관리대장", "회계 관련 서류"],
+    examples: ["시설적립금을 적립하면서 자체계획 미수립, 학교운영위원회 심의 누락, 교육청 보고 미이행, 보관금 관리 부적정 등 시설적립금 운용 절차를 준수하지 않음", "소방계획 수립 시 피난계획을 포함하지 않고 소방계획서를 직원들에게 공람하지 않아 자위소방대 편성 및 임무 숙지를 할 수 없게 함", "장애인전용주차구역 표시를 관리하지 않고, 화장실 관리대장을 비치하지 않았으며, CCTV 운영·관리 방침상 수량과 실제 설치 수량이 상이하고 변경사항 미반영, 설치 안내판 미설치 등 CCTV 운영·관리가 부적정함"]
+  },
+  {
+    id: "sahak-09", cat: "sahak", verified: true, freq: 9,
+    title: "[사립유치원] 생활기록부 기록·관리",
+    detail: "유치원생활기록부는 유아의 발달 등을 종합적으로 관찰·평가하여 졸업대장번호, 인적사항, 학적사항, 출결상황, 신체발달상황, 유아발달상황 등을 기록하고 전자기록생산시스템을 통해 생산·관리하며 준영구 기록물로 보존해야 함. 출결처리는 천재지변, 법정 감염병, 경조사 등 인정 사유에 한해 출석으로 인정하는 등 지침을 준수해야 함.",
+    disposition: "",
+    basis: "｢유아교육법｣ 제14조 / ｢유치원생활기록부 작성 및 관리지침, 교육부｣, ｢유치원 생활기록부 기재요령, 교육부｣",
+    checks: ["유치원생활기록부 내용이 누락 없이 작성되어 있는가? - 인적사항, 학적사항, 출결상황, 신체발달상황, 유아발달상황, 전입 및 전출상황, 졸업대장번호 등 기록 여부", "유치원생활기록부는 전자기록생산시스템을 통해 생산·관리하며 준영구 기록물로 보존하고 있는가?", "출결처리 시 관련 지침을 준수하여 처리하였는가?"],
+    docs: ["유치원생활기록부", "졸업대장", "출석부"],
+    examples: ["생활기록부 작성 시 수료일 미기재, 입학일 오기, 학적 변동 유아의 수업일수를 변동 당일 기준이 아닌 원장이 정한 수업일수로 일괄 기재함", "생활기록부에 생년월일·주민등록번호·출석일수를 잘못 기재하고, 다른 유아의 신체발달상황·건강검진·유아발달상황 자료를 입력하였으며, 학적사항을 미기재함", "휴업기간 수업일수를 가산하여 출석부에 전체 원생의 연간 수업일수와 출석일수를 오류 입력함", "학적 변동 유아의 수업일수를 변동 당일 기준으로 반영하지 않고, 결석계를 제출받지 않은 채 질병결석으로 기재함", "학년 종료 후 생활기록부 오류사항을 일괄 정정하면서 정정대장에 첨부할 증빙서류를 누락하고, 출석일수·수업일수를 오류 기재함", "학적변동·졸업 후 상황 미기재, 출결상황 오기, 신체발달상황 작성 누락, 유아발달상황 기재방식 미준수, 출석일수 미충족 유아의 수료·졸업 처리 등 생활기록부 작성을 부적정하게 함", "교육일수 미충족으로 수료번호가 없는 유아에게 다음 학년도 생활기록부에 수료번호를 기재하고, 입학일·생년월일을 학년도 간 불일치하거나 불완전하게 기재함", "생활기록부에 학적사항만 입력하고 수료대장번호·출결상황·신체발달상황 등을 누가 입력하지 않았으며, 정정 시 전자기록생산시스템을 이용하지 않고 수기 정정하고 증빙자료를 미첨부함", "담임 성명란 오기재, 장기 결석의 출석 처리, 서로 다른 유아 및 학년도 간 유아발달상황 내용을 동일하게 기재함"]
+  },
+  {
+    id: "sahak-10", cat: "sahak", verified: true, freq: 6,
+    title: "[사립유치원] 교육과정 운영",
+    detail: "국가 수준 교육과정과 충청북도 교육과정 편성·운영 지침 등을 바탕으로 민주적 절차를 거쳐 유치원 실정에 알맞은 교육과정을 편성·운영하고, 자체 평가 결과를 다음 학년도 편성·운영에 반영해야 함. 유아 안전교육은 교통안전 10시간, 재난 대비 6시간, 약물 오남용 예방 10시간 등 기준 이상 실시하고 일일 교육계획에 반영해야 함.",
+    disposition: "",
+    basis: "｢아동복지법시행령｣ 제28조 / ｢충청북도 유치원 교육과정 편성·운영 지침, 충청북도교육청｣",
+    checks: ["유치원 교육과정 편성 및 운영이 적합하였는가?", "유치원 교육과정에 대한 자체평가를 실시하여 그 결과를 반영하였는가?", "안전교육 기준을 준수하여 연간 안전교육 계획을 수립하였는가?", "안전교육 계획에 따라 교육을 실시하였는가?"],
+    docs: ["유치원 운영 계획 서류", "안전교육 관련 서류"],
+    examples: ["유치원 종합 운영계획 수립 시 학부모 설문조사 결과를 반영하지 않고, 유치원 실태분석과 운영 결과 분석을 수년간 동일한 내용으로 작성함", "방과후 과정 특성화 프로그램 선정 평가에서 평가자 전원의 영역·항목별 점수가 동일하여 실지 평가 여부를 확인할 수 없게 함", "교육계획 수립 시 인성교육계획·안전교육 7대 표준안 등 교육과정 편성·운영 지침을 반영하지 않고, 실태분석·설문조사 결과를 미반영하였으며, 방과후과정 운영시간 축소에 대해 학부모 일괄 동의로 운영함", "유치원 교육과정 수업일수를 정하지 않고 운영하고, 유치원운영위원회 필수 자문사항인 교육과정 운영방법에 관한 자문을 누락함", "유치원 규칙 개정 시 운영위원회 자문 절차를 거치지 않고, 학급편제·비용징수 등 개정사항을 관할청에 보고하지 않음", "운영계획상 정한 수업일수와 실제 수업일수를 다르게 운영하고, 교육과정 운영방법에 관한 운영위원회 자문을 누락함"]
+  },
+  {
+    id: "sahak-11", cat: "sahak", verified: true, freq: 7,
+    title: "[사립유치원] 유치원운영위원회 운영",
+    detail: "운영위원의 임기는 2년으로 한 차례만 연임할 수 있고 공무원 결격사유에 해당하지 않아야 하며, 위원 선출은 선출관리위원회를 구성·운영하여 후보자 등록·투표·개표 등 절차에 따라야 함. 유치원장은 유치원규칙 개정, 예산·결산, 교육과정 운영방법, 학부모 부담 경비 등 필수 자문 사항에 대해 운영위원회 자문을 반드시 거쳐야 하고 회의는 안건 제안·접수, 소집 공고, 회의록 작성·이송 절차로 운영해야 함.",
+    disposition: "",
+    basis: "｢유아교육법｣ 제19조의3, 제19조의4, 제19조의5 / ｢충청북도립학교운영위원회 설치·운영에 관한 조례｣ 제4조, 제5조 / ｢유치원운영위원회 길라잡이, 충청북도교육청｣",
+    checks: ["운영위원 선출 절차를 준수하였는가? - 선출관리위원회 구성·운영 여부, 입후보 등록자의 공무원 결격사유 조회 여부", "유치원운영위원회 필수 자문 사항에 대하여 누락 없이 자문을 거쳤는가?"],
+    docs: ["운영위원회 회의 관련 서류", "운영위원 선출 관련 서류"],
+    examples: ["학부모위원을 선거 절차 없이 연임시키고, 정당한 사유 없이 무투표 당선 처리하였으며, 결격사유·범죄경력 조회를 미실시하고 자격 없는 자를 교원위원으로 위촉함", "학부모위원 선출 시 범죄경력 조회를 실시하지 않고, 위원장 선출 투표용지를 보관하지 않았으며, 일부 위원만 투표하게 하고 회의 운영 시 안건 제안·접수·결과 이송 절차를 이행하지 않음", "운영위원회 규정 개정 시 운영위원회 자문을 받지 않고, 위원장·부위원장 무기명투표 선출에 대한 투표용지·회의록을 갖추지 않아 선출 과정을 확인할 수 없게 함", "위원장·부위원장을 무기명투표가 아닌 원장 지명으로 선출하고, 회의 운영 절차를 이행하지 않았으며, 운영위원장이 아닌 유치원장이 회의 소집 공고를 하고 회의 안건을 보관하지 않음", "운영위원회 규정상 위원 정수 조항을 개정하지 않고, 임기 종료 위원을 선출 절차 없이 연임 위촉하였으며, 종전 감사 처분에도 안건 제안 절차 생략, 유치원장의 소집 공고, 자문 안건 미첨부 등 회의 절차를 이행하지 않음", "임기 2년·1차 연임 제한을 위반하여 학부모위원을 연임 선출하고, 위원장 선출 시 일부 위원만 투표하게 하였으며, 아동학대 예방·유아 보건에 관한 법정 필수 자문사항의 자문을 받지 않음", "규정과 다르게 학부모위원 수를 구성하고, 특별한 사유 없이 모든 위원의 임기를 1년으로 하여 매년 새로 구성하였으며, 결격사유 조회를 미실시하고 위원장·부위원장을 무기명투표가 아닌 지명으로 결정함"]
+  },
+  {
+    id: "sahak-12", cat: "sahak", verified: true, freq: 6,
+    title: "[사립유치원] 직원 및 계약직원 채용",
+    detail: "강사·영양사·조리사·운전원·행정직원 등 계약직원 채용 시 임금, 소정근로시간, 휴일, 연차 유급휴가 등을 명시한 근로계약을 체결하고 성범죄경력(아동학대 경력 포함) 등을 확인해야 함. 강사는 자격 기준을 충족해야 하며, 고용기간 1개월 이상이고 월 60시간 또는 주당 평균 15시간 이상 근로하는 경우 4대 보험에 가입해야 함.",
+    disposition: "",
+    basis: "｢아동·청소년의 성보호에 관한 법률｣ 제56조 / ｢근로기준법｣ 제17조 및 같은 법 시행령 제8조 / ｢유아교육법｣ 제20조, 제21조, 제23조 및 같은 법 시행령 제27조 / ｢국민연금법｣ 제8조, ｢국민건강보험법｣ 제6조 / ｢고용보험법｣ 제8조, ｢산업재해보상보험법｣ 제6조",
+    checks: ["계약직원 채용 시 규정을 준수하여 임용하였는가? - 무자격 계약직원(강사, 영양사, 조리사, 운전원 등) 채용 여부, 근로계약서 등 작성 여부, 성범죄경력 등 확인 여부"],
+    docs: ["근로계약 서류", "자격증 사본"],
+    examples: ["교원 채용 시 범죄경력을 조회하지 않고, 마약류 중독 여부 확인을 위한 의사 진단서 또는 검사 결과 통보서를 확인하지 않음", "계약직원 채용 시 성범죄·아동학대전력조회를 지연 실시하고 채용신체검사서를 징구하지 않았으며, 교사 임용 시 결격사유 조회를 미실시하고 사회보험 의무 가입 대상자를 가입시키지 않음", "설립자를 행정직원으로 근로계약 체결하면서 소정근로시간, 휴일, 연차 유급휴가, 업무, 임금 구성항목 등을 명시하지 않음", "교원 임용 시 결격사유 조회를 실시하지 않거나 최장 수년간 지연하여 조회함", "설립자를 방과후교사로 임용 보고하고 실제로는 시설관리·통학버스 운행 등 다른 업무를 담당하게 하여 교사 경력을 부당하게 인정받게 함", "방과후 특성화프로그램 강사 계약 시 성범죄경력·아동학대 범죄전력 회신 및 채용신체검사서 징구를 계약일로부터 지연함"]
+  },
+  {
+    id: "sahak-13", cat: "sahak", verified: true, freq: 3,
+    title: "[사립유치원] 유치원 적립금 및 차입금 관리",
+    detail: "적립금은 자체 운용 계획을 수립하여 유치원운영위원회 자문을 거쳐 적립 및 사용계획을 관할청에 사전 보고하고 당초 적립 목적에 맞게 사용해야 함. 차입금은 운영상 불가피한 사유와 확실한 상환재원이 있을 때 미리 관할청의 허가를 받아 운용하고, 일시 차입은 그 연도 안에 상환하며 예산서·결산서에 차입금 명세서를 첨부해야 함.",
+    disposition: "",
+    basis: "｢사학기관 재무ㆍ회계 규칙｣ 제8조, 제15조, 제22조의2, 제23조 / ｢사립유치원 회계 실무 매뉴얼, 충청북도교육청｣ / ｢사립유치원 재정업무 매뉴얼, 충청북도교육청｣",
+    checks: ["적립금 자체계획을 수립하여 운영위원회 자문을 받고 관할청에 사전에 보고하였는가?", "적립목적, 운용 절차는 적정하였는가?", "차입금 운용 시, 미리 관할청의 허가를 받았는가?", "차입금에 대한 상환의 시기와 상환금은 적정하였는가?", "차입금 및 상환금에 대하여 예산서 및 결산서에 작성되어 있는가?"],
+    docs: ["적립금 계획 및 적립금 관리대장", "차입 및 상환 계획 및 관리대장", "회계 관련 서류"],
+    examples: ["유치원운영위원회 자문 또는 세입·세출 예산 편성 없이 단기·장기 차입금을 차입하고, 단기차입금을 당해 회계연도 내 상환하지 않았으며, 차입금명세서·부채명세서를 교육지원청에 보고하지 않음", "시설적립금 자체계획은 수립하였으나 세입·세출예산서에 반영하지 않고, 운영위원회 자문을 거치지 않았으며, 관할청에 보고하지 않음", "운영위원회 자문 및 예산 편성 없이 단기차입금을 차입하고 당해 회계연도에 상환하지 않았으며, 차입금명세서·부채명세서를 교육지원청에 제출하지 않음"]
+  },
+  {
+    id: "sahak-14", cat: "sahak", verified: true, freq: 7,
+    title: "[사립유치원] 통학버스 및 재산 관리",
+    detail: "어린이통학버스는 어린이운송용 승합자동차 구조와 보호표지를 갖추고 피해 전액 배상이 가능한 보험에 가입해야 하며, 직접 소유 통학차량은 유상운송허가를 받고 운영자·운전자는 신규 및 2년마다 정기 안전교육을 받아야 함. 교육에 직접 사용되는 재산은 매도·담보 제공할 수 없고, 시설 변경 시 교육감(관할청)의 변경 인가를 받아야 하며 차량정비대장 등 차량 관리 기록을 유지해야 함.",
+    disposition: "",
+    basis: "｢도로교통법｣ 제53조의3 및 같은 법 시행령 제31조 / ｢충청북도 교육비특별회계 소관 공용차량 관리규칙｣ 제20조 / ｢사립학교법｣ 제28조제2항, 같은 법 시행령 제12조 / ｢학교안전사고 예방 및 보상에 관한 법률｣ 제5조, 제6조, 제8조의2 / ｢유아교육법｣ 제8조 및 같은 법 시행령 제9조, 같은 법 시행규칙 제2조의3",
+    checks: ["어린이통학버스 안전장비를 장착하였는가? - 좌석안전띠장치, 승강구, 등화장치, 어린이보호표지, 좌측정지표시장치 등", "어린이통학버스 운영자 및 운전자는 안전교육을 이수하였는가?", "어린이 통학버스 신고 의무화 이행 여부", "차량정비대장 기록을 유지ㆍ관리하고 있는가?", "학교교육에 직접 사용되는 재산 중 매도하거나 담보를 제공한 재산이 있는가?", "유치원 시설물을 안전하게 관리하고 있는가?", "시설 변경 시 관할 교육지원청에 시설 변경 인가 신청을 하였는가?"],
+    docs: ["어린이통학버스 관련 서류", "토지 및 건물 등기부등본", "시설물 관리 실태"],
+    examples: ["통학버스 유상운송 허가기간이 만료되었는데도 감사일 현재까지 허가를 갱신하지 않음", "운전자가 안전교육 재이수 기간 중 교육을 이수하지 않고 기한 경과 후 이수하였는데도 통학버스를 운행하게 함", "통학버스 종합보험을 운전자 한정 특약으로 가입한 상태에서 별도 채용 운전자가 사고 시 보상받지 못하는 상태로 통학버스를 운행하게 함", "외벽을 추가 설치하여 용도를 변경하고도 관할 구청 신고 및 교육지원청 시설 변경 인가를 받지 않고 인가받은 용도와 다르게 시설을 사용함", "유치원 업무용 임차 차량을 운행하면서 차량운행일지, 유류수불대장, 차량정비대장 등 차량 관련 대장을 작성·관리하지 않음", "외벽 추가 설치·가벽 철거 등으로 인가받은 용도와 다르게 시설을 사용하면서 시설 변경 인가를 받지 않고, 놀이기구의 설치검사·정기시설검사 관련 서류를 보관하지 않아 검사 여부를 확인할 수 없게 함", "유치원 인가 시설이 아닌 공간을 유치원 행사 및 교육활동 공간으로 사용하고, 변경 인가받은 사항과 다르게 시설을 사용함"]
+  },
+  {
+    id: "sahak-15", cat: "sahak", verified: true, freq: 11,
+    title: "[사립유치원] 유치원 회계",
+    detail: "유치원 회계는 건전하게 운영하고 수입과 지출을 모두 예산에 편입하며 세출예산을 목적 외에 사용할 수 없고, 대가 지급 시 견적서·납품서·세금계산서 등 증명서류를 징구·보관하고 계약서를 작성하는 등 회계 처리절차를 준수해야 함. 급여 지급 시 근로소득 원천징수·납부를 이행하고, 퇴직근로자를 위한 퇴직급여제도를 설정·운영해야 함.",
+    disposition: "",
+    basis: "｢사학기관 재무회계 규칙｣ 제4조, 제21조, 제32조, 제33조 / ｢소득세법｣ 제2조, 제4조, 제20조, 제127조, 제128조 / ｢부가가치세법｣ 제32조 / ｢근로자퇴직급여보장법｣ 제2조, 제4조 / ｢사립유치원 회계 실무 매뉴얼, 충청북도교육청｣ / ｢사립유치원 재정업무 매뉴얼, 충청북도교육청｣ / ｢수학여행·수련활동 등 현장체험학습 운영 매뉴얼, 충청북도교육청｣",
+    checks: ["유치원회계 집행 시 회계처리 규정을 준수하여 처리하였는가? - 품의요구서 및 지출결의서 작성 여부, 예산의 목적 외 사용 및 사적 경비 사용 불가, 개인카드 또는 현금으로 선 결제 후 유치원 회계에서 개인계좌로 대체 입금 불가, 견적서‧납품서‧세금계산서 또는 법인카드영수증 등 관련 서류 징구 여부, 수익자부담경비 등을 세입예산에 편성하지 않고 직접 사용 불가, 공사 등 집행 시 계약서 또는 계약 성립의 증거서류 작성 여부, 차량운송 계약 시 교통안전정보 관련 서류 징구 여부", "급여 지급 시 근로소득 원천징수를 적정하게 이행하였는가? - 급여 지급 시 소득세 원천징수 및 납부 여부, 원천징수이행상황신고 시 근로소득 금액의 축소 여부", "퇴직근로자를 위한 퇴직급여제도를 운영하고 있는가?"],
+    docs: ["회계 관련 서류", "급여대장 및 급여지급명세서 등 급여 관련 서류", "퇴직적립금 및 퇴직연금 관련 서류"],
+    examples: ["다수 계약에 대해 견적서, 납품서, 검사·검수 조서, 착공계·준공계 등 지출 및 공사 관련 서류를 구비하지 않고 대금을 지급하여 적정 집행 여부를 확인할 수 없게 함", "성과상여금 지급액 산정 시 출산휴가 및 방학기간을 근무 일수에서 제외하여 성과상여금을 과소 지급함", "지출 건을 지정정보처리장치(K-에듀파인)로 회계처리하지 않아 현금출납부와 유치원회계 통장 잔액이 불일치하게 하고, 회계관계직원에 대해 재정보증보험을 가입하지 않음", "설립자 개인 소유 시설의 전기요금을 유치원회계에서 집행하고, 교직원 명절선물 등 격려성 금품을 업무추진비에서 집행함", "전문건설업 면허 미확인, 부당한 1인 수의계약 체결, 하자보수보증금·하자검사 미이행, 산재·고용보험 가입 미확인, 착공·준공 문서 미접수 등 시설공사 계약 및 집행을 부적정하게 함", "재정보증보험 미가입 상태로 회계를 운영하고, 과세문서의 수입인지를 미납부하였으며, 세출예산에서 집행할 수 없는 통학버스 기사 명절 상여금 등을 지급하고 임차료를 정당 채주가 아닌 개인 계좌로 지급함", "시설 공사 관련 서류를 구비하지 않고 대금을 지급하고, 선금 지급 시 채권 확보를 위한 증권 또는 보증서를 제출받지 않음", "회계 종료 후 추경예산을 편성하고, 예결산서를 관할청 홈페이지에 1년간 공개하지 않았으며, 유치원회계가 아닌 퇴직적립금 계좌에서 지출하고 결산 보고 시 퇴직금 적립 현황을 보고하지 않음", "전문건설공사 면허 미확인, 계약이행 보증 증서 및 인지세 미징구, 폐기물처리비 증빙 없이 공사대금 전액 지급, 과태료의 유치원회계 집행 등 예산을 목적 외로 사용함", "퇴직금을 산정근거 없이 적립하면서 퇴직금관리대장을 관리하지 않아 개인별 적립내역을 파악할 수 없게 하고, 산정액과 다른 금액을 지급하였으며, 결산 보고 시 퇴직금 적립 현황을 보고하지 않음", "계약 건에 대해 계약서와 함께 보존해야 할 세금계산서, 견적서, 납품서, 공사확인서 등 증빙서류를 보존·관리하지 않음"]
+  },
+  {
+    id: "sahak-16", cat: "sahak", verified: true, freq: 3,
+    title: "[사립유치원] 기타",
+    detail: "검수한 식재료는 표시된 보관기준에 따라 보관하고 대용량 제품을 소분 보관하는 경우 제품명과 유통기한을 반드시 표기해야 함. 유치원의 장은 유아에 대하여 1년에 한 번 이상 건강검진을 실시하고 치료가 필요한 유아에 대해 보호자와 협의하여 필요한 조치를 하며 결과를 생활기록부에 기록·관리해야 함.",
+    disposition: "",
+    basis: "｢유치원 급·간식 운영관리 지침서, 교육부｣ / ｢식품위생법 시행규칙｣ 제95조 / ｢유아교육법｣ 제17조 / ｢유아교육법 시행규칙｣ 제2조의6",
+    checks: ["유통기한이 경과된 원료 또는 완제품을 조리할 목적으로 보관하거나 이를 음식물의 조리에 사용하지는 않았는가?", "연 1회 이상 건강검진을 실시하였는가?", "치료가 필요한 유아에게 필요한 조치를 취하였는가?"],
+    docs: ["급식소 현장 점검", "건강검진 관련 서류", "건강검진 결과통보서(확인서)"],
+    examples: ["유통기한이 경과한 식재료를 폐기하지 않고 다른 식재료와 함께 보관하고, 소분 식재료에 제품명과 유통기한을 표시하지 않은 채 보관함", "건강검진결과통보서를 제출하지 않거나 전년도 통보서를 제출한 유아에 대해 건강검진을 실시하지 않음", "유통기한 경과 식재료를 폐기하지 않고 보관하고, 납품일자를 확인할 수 없는 식재료를 표시 없이 보관하였으며, 원장 개인의 식재료를 조리실 냉장·냉동고에 보관함"]
+  }
+];
+
+</script>
+<script>
+/* 감사내비 프로토타입 v2 — 서버·DB 없이 localStorage만 사용 */
+(function () {
+  "use strict";
+
+  var LS_CHECKS   = "gamsanavi.checks.v1";    // { checkKey: true }
+  var LS_BOARD    = "gamsanavi.board.v1";     // [{name, dept, owner, status}]
+  var LS_NA       = "gamsanavi.na.v1";        // { caseId: true }  해당없음 처리
+  var LS_MEMO     = "gamsanavi.memo.v1";      // { caseId: "메모" }
+  var LS_SETTINGS = "gamsanavi.settings.v1";  // { school, auditDate }
+  var LS_METRICS  = "gamsanavi.metrics.v1";   // 사용 효과 측정용
+  var LS_ROLE     = "gamsanavi.role.v1";      // 담당 역할 필터
+
+  function load(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+    catch (e) { return fallback; }
+  }
+  /* 학교 PC 보안 설정으로 저장소가 차단된 경우에도 앱이 멈추지 않도록 한다
+     (저장만 안 되고 세션 내 사용은 가능 → 백업 파일 저장 안내) */
+  var storageBlocked = false;
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); }
+    catch (e) {
+      if (!storageBlocked) {
+        storageBlocked = true;
+        var meta = $("#meta-line");
+        if (meta) meta.textContent =
+          "⚠ 이 브라우저 설정에서는 자동 저장이 되지 않습니다. 종료 전 [통계·보고서]의 백업 파일 저장을 이용하세요.";
+      }
+    }
+  }
+
+  var checks   = load(LS_CHECKS, {});
+  var board    = load(LS_BOARD, []);
+  var naCases  = load(LS_NA, {});
+  var memos    = load(LS_MEMO, {});
+  var settings = load(LS_SETTINGS, { school: "", auditDate: "", auditType: "jonghap" });
+  var metrics  = load(LS_METRICS, {
+    firstActAt: null,   // 최초 점검 시각(ISO)
+    lastActAt: null,    // 마지막 활동 시각(ms)
+    activeMs: 0,        // 누적 점검 시간(ms) — 활동 간격이 길면 휴지로 보고 제외
+    startPct: null,     // 최초 점검 시점의 종합 준비도(%)
+    snapshots: []       // [{ at: ISO, pct: 종합 준비도% }] 준비도 변화 추이
+  });
+  var activeCat = CATEGORIES[0].id;
+  var searchTerm = "";
+  var activeRole = "";
+  try { activeRole = localStorage.getItem(LS_ROLE) || ""; } catch (e) { /* 차단 시 무시 */ }
+  /* 복원된 역할에 맞춰 첫 활성 분야를 보이는 분야 중 하나로 맞춘다(아래 visibleCategories 사용) */
+
+  /* ───────── 사용 효과 측정 (연구 효과성 검증용) ───────── */
+  var ACTIVE_GAP_MS = 10 * 60 * 1000; // 10분 이상 비활동이면 다른 세션으로 보고 시간 미합산
+  function recordActivity() {
+    var now = Date.now();
+    if (!metrics.firstActAt) {
+      metrics.firstActAt = new Date(now).toISOString();
+      metrics.startPct = overallPct();
+    }
+    if (metrics.lastActAt) {
+      var gap = now - metrics.lastActAt;
+      if (gap > 0 && gap < ACTIVE_GAP_MS) metrics.activeMs += gap;
+    }
+    metrics.lastActAt = now;
+    snapshotReadiness(now);
+    save(LS_METRICS, metrics);
+  }
+  /* 종합 준비도가 바뀔 때만 스냅샷을 남겨 추이 그래프를 만든다 */
+  function snapshotReadiness(now) {
+    var pct = overallPct();
+    var last = metrics.snapshots[metrics.snapshots.length - 1];
+    if (!last || last.pct !== pct) {
+      metrics.snapshots.push({ at: new Date(now).toISOString(), pct: pct });
+      if (metrics.snapshots.length > 500) metrics.snapshots.shift();
+    }
+  }
+  function overallPct() {
+    var cp = totalProgress(), bp = boardProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+    var boardPct = bp.total ? Math.round(bp.done / bp.total * 100) : null;
+    return boardPct === null ? checkPct : Math.round((checkPct + boardPct) / 2);
+  }
+  function fmtDuration(ms) {
+    var min = Math.round(ms / 60000);
+    if (min < 60) return min + "분";
+    return Math.floor(min / 60) + "시간 " + (min % 60) + "분";
+  }
+  function daysBetween(isoA, isoB) {
+    var a = new Date(isoA), b = new Date(isoB);
+    a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+    return Math.round((b - a) / 86400000) + 1; // 시작일 포함
+  }
+
+  /* ───────── 공통 유틸 ───────── */
+  function $(sel) { return document.querySelector(sel); }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  /* ㉢ 근거 규정의 법령명(「…」)을 국가법령정보센터 검색 링크로 변환 */
+  function lawSearchURL(name) {
+    return "https://www.law.go.kr/LSW/lsSc.do?menuId=1&query=" + encodeURIComponent(name);
+  }
+  function lawLinksHTML(basis) {
+    var s = String(basis || "");
+    var out = "", last = 0, re = /「([^」]+)」/g, m;
+    while ((m = re.exec(s)) !== null) {
+      out += esc(s.slice(last, m.index));
+      out += '<a class="law-link" target="_blank" rel="noopener" href="' +
+        esc(lawSearchURL(m[1])) + '" title="국가법령정보센터에서 열기">「' + esc(m[1]) + "」</a>";
+      last = m.index + m[0].length;
+    }
+    out += esc(s.slice(last));
+    return out;
+  }
+
+  var CAT_MAP = {};
+  CATEGORIES.forEach(function (c) { CAT_MAP[c.id] = c; });
+  /* data.js 입력 실수(cat 오타)가 있어도 앱이 죽지 않고 원시 id를 표시 */
+  function catById(id) { return CAT_MAP[id] || { id: id, name: id, desc: "" }; }
+  function checkKey(caseId, idx) { return caseId + "#" + idx; }
+  function caseDone(c) {
+    return c.checks.every(function (_, i) { return checks[checkKey(c.id, i)]; });
+  }
+
+  /* 해당없음 처리된 사례는 진행률 분모에서 제외 */
+  function catProgress(catId) {
+    var total = 0, done = 0;
+    CASES.forEach(function (c) {
+      if (c.cat !== catId || naCases[c.id]) return;
+      c.checks.forEach(function (_, i) {
+        total++;
+        if (checks[checkKey(c.id, i)]) done++;
+      });
+    });
+    return { total: total, done: done };
+  }
+  /* 진행률 분모는 현재 감사 종류의 점검 대상 분야만 합산 */
+  function totalProgress() {
+    var t = 0, d = 0;
+    scopeCats().forEach(function (cat) {
+      var p = catProgress(cat.id);
+      t += p.total; d += p.done;
+    });
+    return { total: t, done: d };
+  }
+  function boardProgress() {
+    var done = board.filter(function (i) {
+      return i.status === "준비완료" || i.status === "해당없음";
+    }).length;
+    return { total: board.length, done: done };
+  }
+  function pctClass(pct) { return pct >= 70 ? "" : (pct >= 40 ? "warn" : "low"); }
+  function progressBarHTML(pct) {
+    return '<div class="progress-bar"><div class="progress-fill ' + pctClass(pct) +
+      '" style="width:' + pct + '%">' + pct + "%</div></div>";
+  }
+
+  /* ───────── 탭 전환 ───────── */
+  function switchTab(name) {
+    document.querySelectorAll(".tab").forEach(function (b) {
+      var on = b.dataset.tab === name;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll(".tab-panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === "tab-" + name);
+    });
+    if (name === "dash") renderDash();
+    if (name === "stats") renderStats();
+  }
+  document.querySelectorAll(".tab").forEach(function (btn) {
+    btn.addEventListener("click", function () { switchTab(btn.dataset.tab); });
+  });
+  bindActivate($("#home-btn"), function () { switchTab("dash"); });
+
+  function gotoCategory(catId) {
+    activeCat = catId;
+    searchTerm = "";
+    $("#search").value = "";
+    // 역할 필터가 켜져 있고 대상 분야가 그 역할에 없으면 전체 보기로 풀어 준다
+    if (!visibleCategories().some(function (c) { return c.id === catId; })) {
+      activeRole = "";
+      try { localStorage.setItem(LS_ROLE, ""); } catch (e) { /* 무시 */ }
+      var sel = $("#role-filter"); if (sel) sel.value = "";
+    }
+    renderCats(); renderCases(); switchTab("check");
+  }
+
+  /* 클릭과 키보드(Enter/Space) 모두에서 동작하도록 바인딩 */
+  function bindActivate(el, fn) {
+    el.addEventListener("click", fn);
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+    });
+  }
+
+  /* ⑦ 감사 종류 → 점검 범위 (충북 자체감사 규칙·매뉴얼 기준)
+     cats:null = 전 분야, subDays = 수감자료 제출(감사 개시 N일 전), comp = 종합감사 일정 */
+  var AUDIT_TYPES = [
+    { id: "jonghap",  name: "종합감사", cats: null, subDays: 10, comp: true,
+      note: "업무 전반의 적법성·타당성 (전 분야)" },
+    { id: "jaemu",    name: "재무감사", cats: ["hoegye", "gyeyak", "sudang"], subDays: 7,
+      note: "예산 운용실태·회계처리 적정성" },
+    { id: "bokmu",    name: "복무감사", cats: ["bokmu", "sudang"], subDays: 7,
+      note: "복무의무 위반·근무실태·비위" },
+    { id: "teukjeong", name: "특정감사", cats: null, subDays: 7,
+      note: "특정 업무·사업·자금 (해당 분야만 점검, 나머지는 해당없음 처리)" },
+    { id: "boan",     name: "보안감사", cats: ["jeongbo"], subDays: 7,
+      note: "정보보안·개인정보·보안점검" },
+    { id: "jaemul",   name: "재물조사", cats: ["gyeyak"], subDays: 7,
+      note: "물품·재산 정기 재물조사 (공유재산 및 물품관리법 제59·60조)" },
+    { id: "ilsang",   name: "일상감사", cats: ["hoegye", "gyeyak"], subDays: null,
+      note: "주요 업무 집행 전 적법성·타당성 검토" }
+  ];
+  function currentType() {
+    for (var i = 0; i < AUDIT_TYPES.length; i++) {
+      if (AUDIT_TYPES[i].id === settings.auditType) return AUDIT_TYPES[i];
+    }
+    return AUDIT_TYPES[0]; // 기본: 종합감사
+  }
+  function scopeCatIds() {
+    var t = currentType();
+    return t.cats || CATEGORIES.map(function (c) { return c.id; });
+  }
+  function inScope(catId) { return scopeCatIds().indexOf(catId) !== -1; }
+  /* 현재 감사 종류의 점검 대상 분야 */
+  function scopeCats() {
+    return CATEGORIES.filter(function (c) { return inScope(c.id); });
+  }
+
+  /* ④ 담당 역할 → 점검 분야 매핑 (학교 업무분장 기준) */
+  var ROLES = [
+    { id: "gyomu",   name: "교무·교육과정 담당", cats: ["gyomu", "chehum"] },
+    { id: "haengjeong", name: "행정실(회계·계약·시설)", cats: ["hoegye", "gyeyak", "sisul"] },
+    { id: "boksu",   name: "인사·복무·보수 담당", cats: ["bokmu", "sudang"] },
+    { id: "bangkwa", name: "방과후·돌봄 담당", cats: ["bangkwa"] },
+    { id: "geupsik", name: "영양·급식 담당", cats: ["geupsik"] },
+    { id: "jeongbo", name: "정보·개인정보 담당", cats: ["jeongbo"] },
+    { id: "sahak",   name: "사립학교·법인 담당", cats: ["sahak"] }
+  ];
+  function roleById(id) {
+    for (var i = 0; i < ROLES.length; i++) if (ROLES[i].id === id) return ROLES[i];
+    return null;
+  }
+  /* 점검 탭에 보일 분야 = 감사 종류 범위 ∩ 담당 역할 (역할 미선택 시 범위 전체)
+     범위와 역할이 겹치지 않으면 역할을 무시하고 범위 전체를 보여 빈 화면을 막는다 */
+  function visibleCategories() {
+    var base = scopeCats();
+    var r = roleById(activeRole);
+    if (!r) return base;
+    var inter = base.filter(function (c) { return r.cats.indexOf(c.id) !== -1; });
+    return inter.length ? inter : base;
+  }
+
+  /* ⑥ 감사 준비 일정 — 감사실무매뉴얼 기준 D-day 역산 작업 */
+  var TIMELINE = [
+    { off: 30, task: "분야별 자체점검 착수 — 빈출(★) 사례부터 확인", note: "준비 기간 확보" },
+    { key: "submit", off: 10, task: "수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
+    { off: 7,  task: "감사계획 통보 수령·검토 (감사대상·범위·기간)", note: "감사예정일 7일 전(시행령 §12)" },
+    { off: 3,  task: "수감자료·비치서류 최종 점검, 담당별 준비 상태 확인", note: "" },
+    { off: 1,  task: "감사장 설치·준비물 확인 (복사기·프린터·파쇄기·통장·사무용품)", note: "감사실무매뉴얼 감사당일 준비" },
+    { off: 0,  task: "감사 개시 — 기관장 환담, 수감 시작", note: "" }
+  ];
+  function renderTimeline() {
+    var el = $("#dash-timeline");
+    if (!settings.auditDate) {
+      el.innerHTML = '<li class="tl-empty">감사 예정일을 입력하면 매뉴얼 기준 준비 일정이 역산되어 표시됩니다.</li>';
+      return;
+    }
+    var type = currentType();
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var target = new Date(settings.auditDate + "T00:00:00");
+    // 감사 종류에 맞춰 수감자료 제출(off) 행을 조정한다
+    var steps = TIMELINE.map(function (t) {
+      if (t.key === "submit") {
+        if (type.subDays === null) return null; // 일상감사 등: 수감자료 단계 없음
+        return { off: type.subDays, task: "수감자료 제출",
+          note: type.comp ? "감사 개시 10일 전까지(자체감사 규칙 §20④)" : "기관 지정 기한 확인(감사 개시 " + type.subDays + "일 전 권장)" };
+      }
+      return t;
+    }).filter(Boolean);
+    el.innerHTML = steps.map(function (t) {
+      var d = new Date(target); d.setDate(d.getDate() - t.off);
+      var dstr = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+      var ddiff = Math.round((d - today) / 86400000);
+      var state, badge;
+      if (ddiff < 0) { state = "past"; badge = "지남"; }
+      else if (ddiff === 0) { state = "today"; badge = "오늘"; }
+      else if (ddiff <= 7) { state = "soon"; badge = "D-" + ddiff; }
+      else { state = "future"; badge = "D-" + ddiff; }
+      return '<li class="tl-item tl-' + state + '">' +
+        '<span class="tl-date">' + dstr + '</span>' +
+        '<span class="tl-badge">' + badge + "</span>" +
+        '<span class="tl-task">' + esc(t.task) +
+        (t.note ? ' <span class="tl-note">' + esc(t.note) + "</span>" : "") + "</span></li>";
+    }).join("");
+  }
+
+  /* ───────── 탭0: 대시보드 ───────── */
+  function renderDash() {
+    renderTimeline();
+    // D-day
+    var dEl = $("#dday-big"), dateEl = $("#dday-date");
+    if (settings.auditDate) {
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var target = new Date(settings.auditDate + "T00:00:00");
+      var diff = Math.round((target - today) / 86400000);
+      var label = diff > 0 ? "D-" + diff : (diff === 0 ? "D-day" : "D+" + (-diff));
+      var type = currentType();
+      dEl.textContent = label;
+      dEl.className = "dday-big " + (diff > 90 ? "far" : (diff > 30 ? "mid" : ""));
+      dateEl.innerHTML = (settings.school ? esc(settings.school) + " · " : "") +
+        '<span class="dday-type">' + esc(type.name) + "</span> · 감사 예정일 " + esc(settings.auditDate);
+      // 수감자료 제출 마감 — 감사 종류별 기한 (종합감사는 개시 10일 전, 자체감사 규칙 §20④)
+      if (type.subDays === null) {
+        $("#dday-mile").innerHTML = '🔎 ' + esc(type.note);
+      } else {
+        var sub = new Date(target); sub.setDate(sub.getDate() - type.subDays);
+        var sdiff = Math.round((sub - today) / 86400000);
+        var subStr = sub.getFullYear() + "-" + ("0" + (sub.getMonth() + 1)).slice(-2) +
+          "-" + ("0" + sub.getDate()).slice(-2);
+        $("#dday-mile").innerHTML = "📌 수감자료 제출 마감 <b>" + subStr + "</b> " +
+          (sdiff > 0 ? "(D-" + sdiff + ")" : (sdiff === 0 ? "(오늘!)" : "(마감 지남)")) +
+          ' <span class="muted">— ' + (type.comp ? "감사 개시 10일 전(자체감사 규칙 §20④)" : "기관 지정 기한 확인") + "</span>";
+      }
+    } else {
+      dEl.textContent = "D-?";
+      dEl.className = "dday-big unset";
+      dateEl.textContent = "학교명과 감사 예정일을 입력하세요";
+      $("#dday-mile").innerHTML = "";
+    }
+    $("#set-school").value = settings.school || "";
+    $("#set-date").value = settings.auditDate || "";
+
+    // 종합 준비도 = 자체점검 진행률과 수감자료 준비율의 평균(수감자료 없으면 점검만)
+    var cp = totalProgress(), bp = boardProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+    var boardPct = bp.total ? Math.round(bp.done / bp.total * 100) : null;
+    var scorePct = boardPct === null ? checkPct : Math.round((checkPct + boardPct) / 2);
+    $("#dash-score").textContent = scorePct + "%";
+    $("#dash-score-detail").innerHTML =
+      "자체점검 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)<br>" +
+      (boardPct === null ? "수감자료 목록 미등록" :
+        "수감자료 " + bp.done + "/" + bp.total + "건 (" + boardPct + "%)");
+
+    // 분야별 현황 (진행률 낮은 순) — 현재 감사 종류의 점검 대상 분야만
+    var rows = scopeCats().map(function (cat) {
+      var p = catProgress(cat.id);
+      var pct = p.total ? Math.round(p.done / p.total * 100) : 100;
+      return { cat: cat, p: p, pct: pct };
+    }).sort(function (a, b) { return a.pct - b.pct; });
+    $("#dash-cats").innerHTML = rows.map(function (r) {
+      return '<div class="dash-cat-row" role="button" tabindex="0" data-goto="' + r.cat.id + '">' +
+        '<span class="dc-name">' + esc(r.cat.name) + "</span>" +
+        '<span class="dc-bar">' + progressBarHTML(r.pct) + "</span>" +
+        '<span class="dc-num">' + r.p.done + "/" + r.p.total + "</span></div>";
+    }).join("");
+    document.querySelectorAll("#dash-cats [data-goto]").forEach(function (el) {
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
+    });
+
+    // 추천 점검: 현재 감사 종류 범위 내 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
+    var todos = CASES.filter(function (c) {
+      return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c);
+    }).slice(0, 6);
+    $("#dash-todo").innerHTML = todos.length
+      ? todos.map(function (c) {
+          return '<li role="button" tabindex="0" data-goto="' + c.cat + '">★ ' + esc(c.title) +
+            '<span class="todo-cat">' + esc(catById(c.cat).name) + "</span></li>";
+        }).join("")
+      : '<li class="all-done">✔ 빈출 사례 점검을 모두 마쳤습니다. 분야별 점검을 이어가세요.</li>';
+    document.querySelectorAll("#dash-todo li[data-goto]").forEach(function (el) {
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
+    });
+  }
+
+  /* ⑦ 감사 종류 드롭다운 구성 */
+  (function initTypeSelect() {
+    var sel = $("#set-type");
+    AUDIT_TYPES.forEach(function (t) {
+      var o = document.createElement("option");
+      o.value = t.id; o.textContent = t.name;
+      o.title = t.note;
+      sel.appendChild(o);
+    });
+    sel.value = settings.auditType || "jonghap";
+  })();
+
+  $("#save-settings").addEventListener("click", function () {
+    settings.school = $("#set-school").value.trim();
+    settings.auditDate = $("#set-date").value;
+    settings.auditType = $("#set-type").value;
+    save(LS_SETTINGS, settings);
+    // 감사 종류가 바뀌면 점검 탭의 활성 분야를 범위 안으로 맞춘다
+    var vis = visibleCategories();
+    if (!vis.some(function (c) { return c.id === activeCat; })) {
+      activeCat = vis.length ? vis[0].id : scopeCats()[0].id;
+    }
+    renderDash(); renderCats(); renderCases(); renderStats();
+  });
+
+  /* ───────── 탭1: 분야별 자체점검 ───────── */
+  function renderCats() {
+    var html = "";
+    // 종합감사가 아니면 현재 감사 종류와 점검 범위를 안내
+    var type = currentType();
+    if (type.id !== "jonghap") {
+      html += '<li class="cat-scope-note">🔎 <b>' + esc(type.name) + '</b> 범위만 표시 중 <span>' +
+        esc(type.note) + "</span></li>";
+    }
+    visibleCategories().forEach(function (cat) {
+      var p = catProgress(cat.id);
+      html += '<li data-cat="' + cat.id + '"' + (cat.id === activeCat && !searchTerm ? ' class="active"' : "") + ">" +
+        '<span class="cat-prog">' + p.done + "/" + p.total + "</span>" +
+        '<div class="cat-name">' + esc(cat.name) + "</div>" +
+        '<div class="cat-desc">' + esc(cat.desc) + "</div></li>";
+    });
+    $("#cat-list").innerHTML = html;
+    document.querySelectorAll("#cat-list li[data-cat]").forEach(function (li) {
+      li.addEventListener("click", function () {
+        activeCat = li.dataset.cat;
+        searchTerm = "";
+        $("#search").value = "";
+        renderCats(); renderCases();
+      });
+    });
+  }
+
+  /* ④ 역할 선택 드롭다운 구성 + 동작 */
+  (function initRoleFilter() {
+    var sel = $("#role-filter");
+    ROLES.forEach(function (r) {
+      var o = document.createElement("option");
+      o.value = r.id; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    sel.value = activeRole;
+    // 복원된 역할에 첫 활성 분야가 없으면 보이는 첫 분야로 맞춘다
+    var vis0 = visibleCategories();
+    if (!vis0.some(function (c) { return c.id === activeCat; }) && vis0.length) activeCat = vis0[0].id;
+    sel.addEventListener("change", function () {
+      activeRole = sel.value;
+      try { localStorage.setItem(LS_ROLE, activeRole); } catch (e) { /* 무시 */ }
+      // 선택한 역할에 현재 분야가 없으면 역할의 첫 분야로 이동
+      var vis = visibleCategories();
+      if (!vis.some(function (c) { return c.id === activeCat; })) {
+        activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
+      }
+      searchTerm = ""; $("#search").value = "";
+      renderCats(); renderCases();
+    });
+  })();
+
+  function matchesSearch(c, term) {
+    var hay = (c.title + " " + c.detail + " " + c.basis + " " + c.checks.join(" ") + " " +
+      (c.examples || []).join(" ")).toLowerCase();
+    return hay.indexOf(term.toLowerCase()) !== -1;
+  }
+
+  function renderCases() {
+    var list = searchTerm
+      ? CASES.filter(function (c) { return matchesSearch(c, searchTerm); })
+      : CASES.filter(function (c) { return c.cat === activeCat; });
+
+    if (!list.length) {
+      $("#case-area").innerHTML = '<p class="empty">표시할 사례가 없습니다.</p>';
+      return;
+    }
+    var html = "";
+    // 분야 전체가 우리 학교와 무관할 때(예: 공립학교의 사학분야) 한 번에 제외
+    if (!searchTerm) {
+      var allNA = list.every(function (c) { return naCases[c.id]; });
+      html += '<div class="cat-na-bar no-print"><button type="button" class="link-btn" id="cat-na-all">' +
+        (allNA ? "↩ 이 분야 전체를 점검 대상으로 되돌리기" : "이 분야 전체 해당없음(우리 학교 무관)") +
+        "</button></div>";
+    }
+    list.forEach(function (c) {
+      var isNA = !!naCases[c.id];
+      var memo = memos[c.id] || "";
+      html += '<div class="case-card' + (isNA ? " is-na" : "") + '" id="card-' + c.id + '">' +
+        '<div class="case-head"><div><h3>' + esc(c.title) + "</h3>" +
+        (c.verified === false ? '<span class="unverified">⚠ 원문 확인 전(예시)</span>' : "") +
+        "</div><div class=\"head-chips\">" +
+        ((c.freq || 0) >= 3 ? '<span class="chip freq">★ 빈출' + (c.freq > 3 ? " ×" + c.freq : "") + "</span>" : "") +
+        (c.disposition ? '<span class="chip">' + esc(c.disposition) + "</span>" : "") + "</div></div>" +
+        (searchTerm ? '<div class="case-docs" style="margin:2px 0 6px">분야: ' + esc(catById(c.cat).name) + "</div>" : "") +
+        '<p class="case-detail">' + esc(c.detail) + "</p>" +
+        (c.examples && c.examples.length ?
+          '<details class="case-ex"><summary>실제 지적사례 ' + c.examples.length + "건 보기</summary><ul>" +
+          c.examples.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") +
+          "</ul></details>" : "") +
+        '<div class="case-basis">' + lawLinksHTML(c.basis) + "</div>" +
+        '<div class="check-list">';
+      c.checks.forEach(function (q, i) {
+        var key = checkKey(c.id, i);
+        var on = !!checks[key];
+        html += '<label class="' + (on ? "done" : "") + '"><input type="checkbox" data-key="' + key + '"' +
+          (on ? " checked" : "") + (isNA ? " disabled" : "") + "><span>" + esc(q) + "</span></label>";
+      });
+      html += "</div>" +
+        '<div class="case-docs">' + esc(c.docs.join(", ")) + "</div>" +
+        '<div class="case-foot">' +
+        '<button type="button" class="link-btn na-toggle" data-na="' + c.id + '">' + (isNA ? "↩ 점검 대상으로 되돌리기" : "해당없음(우리 학교 무관)") + "</button>" +
+        '<button type="button" class="link-btn memo-toggle' + (memo ? " has-memo" : "") + '" data-memo="' + c.id + '">✎ 메모' + (memo ? " 있음" : "") + "</button>" +
+        "</div>" +
+        '<textarea class="case-memo" data-memo-input="' + c.id + '" placeholder="담당자 메모 (확인한 문서, 후임자에게 남길 말 등)" ' +
+        (memo ? "" : "hidden ") + "rows=\"2\">" + esc(memo) + "</textarea>" +
+        "</div>";
+    });
+    $("#case-area").innerHTML = html;
+
+    document.querySelectorAll('#case-area input[type="checkbox"]').forEach(function (box) {
+      box.addEventListener("change", function () {
+        if (box.checked) checks[box.dataset.key] = true;
+        else delete checks[box.dataset.key];
+        save(LS_CHECKS, checks);
+        recordActivity();
+        box.parentElement.classList.toggle("done", box.checked);
+        renderCats();
+      });
+    });
+    var naAllBtn = document.getElementById("cat-na-all");
+    if (naAllBtn) {
+      naAllBtn.addEventListener("click", function () {
+        var allNA = list.every(function (c) { return naCases[c.id]; });
+        if (!allNA && !confirm("이 분야의 사례 " + list.length + "건을 모두 '해당없음'으로 표시할까요?")) return;
+        list.forEach(function (c) {
+          if (allNA) delete naCases[c.id];
+          else naCases[c.id] = true;
+        });
+        save(LS_NA, naCases);
+        recordActivity();
+        renderCats(); renderCases();
+      });
+    }
+    document.querySelectorAll("#case-area .na-toggle").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.dataset.na;
+        if (naCases[id]) delete naCases[id];
+        else naCases[id] = true;
+        save(LS_NA, naCases);
+        recordActivity();
+        renderCats(); renderCases();
+      });
+    });
+    document.querySelectorAll("#case-area .memo-toggle").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var ta = document.querySelector('[data-memo-input="' + el.dataset.memo + '"]');
+        ta.hidden = !ta.hidden;
+        if (!ta.hidden) ta.focus();
+      });
+    });
+    document.querySelectorAll("#case-area .case-memo").forEach(function (ta) {
+      ta.addEventListener("input", function () {
+        var id = ta.dataset.memoInput;
+        var val = ta.value.trim();
+        if (val) memos[id] = val;
+        else delete memos[id];
+        save(LS_MEMO, memos);
+        var toggle = document.querySelector('[data-memo="' + id + '"]');
+        toggle.classList.toggle("has-memo", !!val);
+        toggle.textContent = val ? "✎ 메모 있음" : "✎ 메모";
+      });
+    });
+  }
+
+  $("#search").addEventListener("input", function () {
+    searchTerm = this.value.trim();
+    renderCats(); renderCases();
+  });
+
+  /* ───────── 탭2: 수감자료 보드 ───────── */
+  var STATUSES = ["미시작", "진행중", "준비완료", "해당없음"];
+
+  function renderBoard() {
+    var fStatus = $("#board-status-filter").value;
+    var fText = $("#board-search").value.trim().toLowerCase();
+    var rows = "";
+    board.forEach(function (item, idx) {
+      if (fStatus && item.status !== fStatus) return;
+      if (fText && (item.name + item.dept + item.owner).toLowerCase().indexOf(fText) === -1) return;
+      var opts = STATUSES.map(function (s) {
+        return '<option' + (s === item.status ? " selected" : "") + ">" + s + "</option>";
+      }).join("");
+      rows += '<tr class="st-' + item.status + '"><td>' + esc(item.name) + "</td><td>" + esc(item.dept) +
+        "</td><td>" + esc(item.owner) + "</td>" +
+        '<td><select data-idx="' + idx + '">' + opts + "</select></td>" +
+        '<td class="no-print"><button class="del-btn" data-del="' + idx + '" title="삭제">✕</button></td></tr>';
+    });
+    $("#board-body").innerHTML = rows;
+    $("#board-table").style.display = board.length ? "" : "none";
+    $("#board-empty").style.display = board.length ? "none" : "";
+
+    var bp = boardProgress();
+    var pct = bp.total ? Math.round(bp.done / bp.total * 100) : 0;
+    $("#board-progress").innerHTML = bp.total
+      ? '<div class="progress-label">수감자료 준비율: ' + bp.done + " / " + bp.total + "건</div>" + progressBarHTML(pct)
+      : "";
+
+    document.querySelectorAll("#board-body select").forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        board[+sel.dataset.idx].status = sel.value;
+        save(LS_BOARD, board); recordActivity(); renderBoard();
+      });
+    });
+    document.querySelectorAll("#board-body .del-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        board.splice(+btn.dataset.del, 1);
+        save(LS_BOARD, board); renderBoard();
+      });
+    });
+  }
+
+  /* 엑셀 머리글 행("항목명/담당부서…")이 같이 복사된 경우 건너뛴다 */
+  function isHeaderRow(cols) {
+    return /^(연번|번호|순번|항목명?|수감자료\s*(항목|목록)?명?|자료명)$/.test((cols[0] || "").trim());
+  }
+
+  $("#import-btn").addEventListener("click", function () {
+    var lines = $("#paste-input").value.split(/\r?\n/);
+    var added = 0;
+    lines.forEach(function (line) {
+      if (!line.trim()) return;
+      var cols = line.split("\t");
+      if (isHeaderRow(cols)) return;
+      var name = (cols[0] || "").trim();
+      if (!name) return; // 첫 칸이 빈 행(엑셀 빈 셀)은 건너뜀
+      board.push({
+        name: name,
+        dept: (cols[1] || "").trim(),
+        owner: (cols[2] || "").trim(),
+        status: "미시작"
+      });
+      added++;
+    });
+    if (!added) {
+      alert("가져올 항목을 찾지 못했습니다.\n항목명이 첫 번째 열에 오도록 붙여넣어 주세요.");
+      return;
+    }
+    save(LS_BOARD, board);
+    $("#paste-input").value = "";
+    $("#paste-box").removeAttribute("open");
+    renderBoard();
+  });
+
+  /* 충북교육청 감사실무매뉴얼(2025 개정)의 종합감사 공통 준비·징구 서류 */
+  var OFFICIAL_ITEMS = [
+    ["종합감사 수감자료 (감사 개시 10일 전까지 제출)", "행정실"],
+    ["주요업무계획(학교교육계획) 책자", "교무부"],
+    ["금고검사조서 (예금·현금 현재 조서, 예금 잔액증명서, 기관 계좌 수신정보조회표)", "행정실"],
+    ["공무원행동강령 이행 점검표", "교무부"],
+    ["운동부 청렴도 제고 자체 점검표 (운동부 운영교만)", "체육부"],
+    ["우수사례 (인쇄물 및 한글 파일, 수감자료 제출 시)", ""],
+    ["제도개선 및 건의사항 (수감자료 제출 시)", ""],
+    ["감사장 준비: 복사기·프린터·파쇄기·사무분장표·직원배치도·비치서류·기관 통장·사무용품", "행정실"]
+  ];
+  $("#official-btn").addEventListener("click", function () {
+    var existing = {};
+    board.forEach(function (i) { existing[i.name] = true; });
+    var added = 0;
+    OFFICIAL_ITEMS.forEach(function (it) {
+      if (existing[it[0]]) return;
+      board.push({ name: it[0], dept: it[1], owner: "", status: "미시작" });
+      added++;
+    });
+    save(LS_BOARD, board);
+    renderBoard();
+    alert(added ? "감사실무매뉴얼 기준 기본 준비물 " + added + "건을 추가했습니다.\n학교 상황에 맞게 담당자를 지정하고, 해당 없는 항목은 '해당없음'으로 바꾸세요."
+      : "기본 준비물이 이미 모두 등록되어 있습니다.");
+  });
+
+  $("#template-btn").addEventListener("click", function () {
+    downloadCSV("수감자료목록_양식.csv", [
+      ["수감자료 항목", "담당부서", "담당자"],
+      ["최근 3년 학교회계 세입세출 결산서", "행정실", "김○○"],
+      ["학업성적관리위원회 회의록", "교무부", "이○○"],
+      ["수의계약 체결 현황(최근 3년)", "행정실", "박○○"]
+    ]);
+    alert("양식 파일(수감자료목록_양식.csv)이 내려받기 되었습니다.\n" +
+      "엑셀에서 열어 작성한 뒤, 데이터 영역을 복사해 이 붙여넣기 칸에 붙여넣으세요.");
+  });
+
+  $("#sample-btn").addEventListener("click", function () {
+    $("#paste-input").value =
+      "최근 3년 학교회계 세입세출 결산서\t행정실\t김○○\n" +
+      "학업성적관리위원회 회의록\t교무부\t이○○\n" +
+      "수의계약 체결 현황(최근 3년)\t행정실\t박○○";
+    $("#paste-box").setAttribute("open", "");
+  });
+
+  $("#board-clear").addEventListener("click", function () {
+    if (confirm("수감자료 목록을 전체 삭제할까요?")) {
+      board = []; save(LS_BOARD, board); renderBoard();
+    }
+  });
+  $("#board-status-filter").addEventListener("change", renderBoard);
+  $("#board-search").addEventListener("input", renderBoard);
+
+  /* ───────── CSV / 백업 ───────── */
+  function downloadFile(filename, content, mime) {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = filename;
+    document.body.appendChild(a); // 일부 브라우저는 DOM 밖 앵커의 download 속성을 무시함
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function downloadCSV(filename, rows) {
+    var csv = "\uFEFF" + rows.map(function (r) {
+      return r.map(function (c) {
+        var s = String(c);
+        // \uC5D1\uC140 \uC218\uC2DD \uC8FC\uC785 \uBC29\uC9C0: =, +, -, @\uB85C \uC2DC\uC791\uD558\uB294 \uC140\uC740 \uBB38\uC790\uB85C \uAC15\uC81C
+        if (/^[=+\-@]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      }).join(",");
+    }).join("\r\n");
+    downloadFile(filename, csv, "text/csv;charset=utf-8;");
+  }
+
+  $("#board-csv").addEventListener("click", function () {
+    var rows = [["수감자료 항목", "담당부서", "담당자", "상태"]];
+    board.forEach(function (i) { rows.push([i.name, i.dept, i.owner, i.status]); });
+    downloadCSV("수감자료_준비현황.csv", rows);
+  });
+
+  $("#check-csv").addEventListener("click", function () {
+    var rows = [["분야", "지적사례", "점검 문항", "점검 여부", "메모"]];
+    CASES.forEach(function (c) {
+      var catName = catById(c.cat).name;
+      c.checks.forEach(function (q, i) {
+        rows.push([catName, c.title, q,
+          naCases[c.id] ? "해당없음" : (checks[checkKey(c.id, i)] ? "완료" : "미점검"),
+          i === 0 ? (memos[c.id] || "") : ""]);
+      });
+    });
+    downloadCSV("자체점검_결과.csv", rows);
+  });
+
+  $("#backup-btn").addEventListener("click", function () {
+    var payload = {
+      app: "gamsanavi", version: 3, exportedAt: new Date().toISOString(),
+      settings: settings, checks: checks, board: board, na: naCases, memos: memos,
+      metrics: metrics
+    };
+    var name = "감사내비_백업_" + new Date().toISOString().slice(0, 10) + ".json";
+    downloadFile(name, JSON.stringify(payload, null, 2), "application/json");
+  });
+
+  /* 외부 파일(백업 JSON)은 손상·수정 가능성이 있으므로 형태를 강제한다 */
+  function sanitizeObject(obj) {
+    return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+  }
+  function sanitizeBoard(arr) {
+    return (Array.isArray(arr) ? arr : []).map(function (i) {
+      i = (i && typeof i === "object") ? i : {};
+      return {
+        name: String(i.name || ""),
+        dept: String(i.dept || ""),
+        owner: String(i.owner || ""),
+        status: STATUSES.indexOf(i.status) !== -1 ? i.status : "미시작"
+      };
+    }).filter(function (i) { return i.name; });
+  }
+  function sanitizeSettings(s) {
+    s = (s && typeof s === "object") ? s : {};
+    var validType = AUDIT_TYPES.some(function (t) { return t.id === s.auditType; });
+    return {
+      school: String(s.school || ""),
+      auditDate: /^\d{4}-\d{2}-\d{2}$/.test(s.auditDate || "") ? s.auditDate : "",
+      auditType: validType ? s.auditType : "jonghap"
+    };
+  }
+  function sanitizeMetrics(m) {
+    var def = { firstActAt: null, lastActAt: null, activeMs: 0, startPct: null, snapshots: [] };
+    if (!m || typeof m !== "object") return def;
+    var snaps = Array.isArray(m.snapshots) ? m.snapshots.filter(function (s) {
+      return s && typeof s.at === "string" && typeof s.pct === "number";
+    }).map(function (s) { return { at: s.at, pct: s.pct }; }) : [];
+    return {
+      firstActAt: typeof m.firstActAt === "string" ? m.firstActAt : null,
+      lastActAt: typeof m.lastActAt === "number" ? m.lastActAt : null,
+      activeMs: typeof m.activeMs === "number" && m.activeMs >= 0 ? m.activeMs : 0,
+      startPct: typeof m.startPct === "number" ? m.startPct : null,
+      snapshots: snaps
+    };
+  }
+
+  $("#restore-btn").addEventListener("click", function () { $("#restore-file").click(); });
+  $("#restore-file").addEventListener("change", function () {
+    var file = this.files[0];
+    this.value = "";
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var payload;
+      try { payload = JSON.parse(reader.result); } catch (e) { payload = null; }
+      if (!payload || payload.app !== "gamsanavi") {
+        alert("감사내비 백업 파일이 아닙니다.");
+        return;
+      }
+      if (!confirm("백업 파일로 현재 데이터를 덮어쓸까요?\n(내보낸 시점: " + (payload.exportedAt || "알 수 없음") + ")")) return;
+      checks   = sanitizeObject(payload.checks);
+      board    = sanitizeBoard(payload.board);
+      naCases  = sanitizeObject(payload.na);
+      memos    = sanitizeObject(payload.memos);
+      settings = sanitizeSettings(payload.settings);
+      metrics  = sanitizeMetrics(payload.metrics);
+      save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
+      save(LS_MEMO, memos); save(LS_SETTINGS, settings); save(LS_METRICS, metrics);
+      $("#set-type").value = settings.auditType;
+      var vis = visibleCategories();
+      if (!vis.some(function (c) { return c.id === activeCat; })) activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
+      renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
+      alert("복원이 완료되었습니다.");
+    };
+    reader.readAsText(file, "utf-8");
+  });
+
+  /* ───────── 탭3: 통계·보고서 ───────── */
+  /* data.js의 사례에 dispoGroup 필드가 있으면 그것을 쓰고,
+     없으면 처분 문구의 키워드로 분류한다(실데이터 입력 시 dispoGroup 권장) */
+  function dispositionGroup(c) {
+    if (c.dispoGroup) return c.dispoGroup;
+    var d = c.disposition || "";
+    if (d.indexOf("회수") !== -1 || d.indexOf("시정") !== -1) return "시정·회수(금전)";
+    if (d.indexOf("경고") !== -1) return "경고";
+    return "주의 등";
+  }
+
+  function barRowHTML(name, n, max, unit) {
+    return '<div class="bar-row"><span class="bar-name">' + esc(name) + "</span>" +
+      '<span class="bar-track"><span class="bar-fill" style="display:block;width:' +
+      Math.round(n / (max || 1) * 100) + '%"></span></span>' +
+      '<span class="bar-num">' + n + (unit || "건") + "</span></div>";
+  }
+
+  /* ① 분야×유형 지적사례 빈도 집계 (연구 근거자료) */
+  function freqByCategory() {
+    return CATEGORIES.map(function (cat) {
+      var topics = CASES.filter(function (c) { return c.cat === cat.id && (c.freq || 0) > 0; })
+        .map(function (c) { return { title: c.title, freq: c.freq || 0 }; })
+        .sort(function (a, b) { return b.freq - a.freq; });
+      var total = topics.reduce(function (s, t) { return s + t.freq; }, 0);
+      return { name: cat.name, topics: topics, total: total };
+    }).filter(function (r) { return r.total > 0; })
+      .sort(function (a, b) { return b.total - a.total; });
+  }
+  function freqGrandTotal() {
+    return CASES.reduce(function (s, c) { return s + (c.freq || 0); }, 0);
+  }
+
+  /* ② 사용 효과 측정 요약 */
+  function effectSummary() {
+    var now = overallPct();
+    var hasData = !!metrics.firstActAt;
+    var days = hasData ? daysBetween(metrics.firstActAt, new Date().toISOString()) : 0;
+    return {
+      hasData: hasData,
+      firstActAt: metrics.firstActAt,
+      days: days,
+      activeMin: Math.round(metrics.activeMs / 60000),
+      activeStr: fmtDuration(metrics.activeMs),
+      startPct: metrics.startPct == null ? 0 : metrics.startPct,
+      nowPct: now,
+      snapshots: metrics.snapshots
+    };
+  }
+  /* 준비도 추이 스파크라인(SVG) — 외부 라이브러리 없이 인라인 생성 */
+  function sparklineSVG(snaps, w, h) {
+    if (!snaps || snaps.length < 2) return "";
+    var t0 = new Date(snaps[0].at).getTime();
+    var t1 = new Date(snaps[snaps.length - 1].at).getTime();
+    var span = (t1 - t0) || 1;
+    var pad = 4;
+    var pts = snaps.map(function (s) {
+      var x = pad + (new Date(s.at).getTime() - t0) / span * (w - 2 * pad);
+      var y = h - pad - (s.pct / 100) * (h - 2 * pad);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    });
+    return '<svg class="sparkline" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h +
+      '" preserveAspectRatio="none" role="img" aria-label="준비도 추이">' +
+      '<polyline fill="none" stroke="#1f6f3f" stroke-width="2" points="' + pts.join(" ") + '"/>' +
+      '<circle cx="' + pts[pts.length - 1].split(",")[0] + '" cy="' + pts[pts.length - 1].split(",")[1] +
+      '" r="3" fill="#1f6f3f"/></svg>';
+  }
+  function effectCardHTML() {
+    var e = effectSummary();
+    var html = '<div class="status-card effect-card"><h4>사용 효과 측정 <span class="muted">— 연구 효과성 검증용</span></h4>';
+    if (!e.hasData) {
+      html += '<p class="empty">아직 점검 기록이 없습니다. [분야별 자체점검]에서 점검을 시작하면 ' +
+        '점검 시작일·누적 점검 시간·준비도 변화가 자동으로 측정됩니다.</p></div>';
+      return html;
+    }
+    var gain = e.nowPct - e.startPct;
+    html += '<div class="effect-nums">' +
+      '<div class="effect-stat"><span class="es-num">' + e.days + '</span><span class="es-lbl">점검 진행 일수</span></div>' +
+      '<div class="effect-stat"><span class="es-num">' + e.activeStr + '</span><span class="es-lbl">누적 점검 시간</span></div>' +
+      '<div class="effect-stat"><span class="es-num">' + e.startPct + '<small>%</small> → ' + e.nowPct + '<small>%</small></span>' +
+      '<span class="es-lbl">준비도 변화 ' + (gain >= 0 ? "▲" + gain : "▼" + (-gain)) + 'p</span></div>' +
+      "</div>";
+    var spark = sparklineSVG(e.snapshots, 320, 56);
+    if (spark) html += '<div class="spark-wrap">' + spark + '<div class="spark-axis"><span>점검 시작</span><span>현재</span></div></div>';
+    html += '<button type="button" class="link-btn" id="metrics-reset">측정 기록 초기화</button>';
+    html += "</div>";
+    return html;
+  }
+
+  function renderStats() {
+    var html = '<div class="status-grid">';
+
+    // ② 사용 효과 측정 (가장 위 — 연구 효과성 지표)
+    html += effectCardHTML();
+
+    // 분야별 사례 분포 (데이터 분석 관점)
+    var counts = CATEGORIES.map(function (cat) {
+      return { name: cat.name, n: CASES.filter(function (c) { return c.cat === cat.id; }).length };
+    }).sort(function (a, b) { return b.n - a.n; });
+    var maxN = counts[0] ? counts[0].n : 1;
+    html += '<div class="status-card"><h4>분야별 지적사례 분포 (수록 ' + CASES.length + "건)</h4>";
+    counts.forEach(function (r) { html += barRowHTML(r.name, r.n, maxN); });
+    html += "</div>";
+
+    // 처분 유형 분포 — 사례에 처분 정보가 없으면(2025 사례집은 처분 결과를 생략) 지적 빈도 분포로 대체
+    var hasDispo = CASES.some(function (c) { return c.disposition; });
+    if (hasDispo) {
+      var groups = {};
+      CASES.forEach(function (c) {
+        var g = dispositionGroup(c);
+        groups[g] = (groups[g] || 0) + 1;
+      });
+      var gRows = Object.keys(groups).map(function (g) { return { name: g, n: groups[g] }; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var gMax = gRows[0] ? gRows[0].n : 1;
+      html += '<div class="status-card"><h4>처분 유형 분포 — 금전 처분(회수)이 걸린 분야가 우선 점검 대상</h4>';
+      gRows.forEach(function (r) { html += barRowHTML(r.name, r.n, gMax); });
+      html += "</div>";
+    } else {
+      var fRows = CATEGORIES.map(function (cat) {
+        var n = CASES.filter(function (c) { return c.cat === cat.id; })
+          .reduce(function (s, c) { return s + (c.freq || 0); }, 0);
+        return { name: cat.name, n: n };
+      }).filter(function (r) { return r.n > 0; })
+        .sort(function (a, b) { return b.n - a.n; });
+      var fMax = fRows[0] ? fRows[0].n : 1;
+      html += '<div class="status-card"><h4>분야별 지적 빈도 — 사례집 수록 지적사례 건수 기준, 빈도 높은 분야가 우선 점검 대상</h4>';
+      fRows.forEach(function (r) { html += barRowHTML(r.name, r.n, fMax); });
+      html += "</div>";
+    }
+
+    // 점검 진행률 — 현재 감사 종류의 점검 대상 분야만
+    var typeName = currentType().name;
+    html += '<div class="status-card"><h4>분야별 자체점검 진행률 <span class="muted">— ' + esc(typeName) + ' 범위</span></h4>';
+    scopeCats().forEach(function (cat) {
+      var p = catProgress(cat.id);
+      var pct = p.total ? Math.round(p.done / p.total * 100) : 100;
+      html += '<div class="progress-label">' + esc(cat.name) + " (" + p.done + "/" + p.total + ")</div>" + progressBarHTML(pct);
+    });
+    html += "</div>";
+
+    // 수감자료 현황
+    var bp = boardProgress();
+    html += '<div class="status-card"><h4>수감자료 준비 현황</h4>';
+    if (bp.total) {
+      STATUSES.forEach(function (s) {
+        var n = board.filter(function (i) { return i.status === s; }).length;
+        html += '<div class="progress-label">' + s + ": " + n + "건</div>";
+      });
+      html += progressBarHTML(Math.round(bp.done / bp.total * 100));
+    } else {
+      html += '<p class="empty">수감자료 목록이 비어 있습니다.</p>';
+    }
+    html += "</div>";
+
+    // ① 분야×유형 지적 빈도 집계표 (연구 근거자료 — 펼치기)
+    var fc = freqByCategory();
+    if (fc.length) {
+      html += '<div class="status-card status-wide"><h4>지적사례 빈도 집계표 ' +
+        '<span class="muted">— 2025년 자체감사 사례집 수록 기준 (총 ' + freqGrandTotal() + '건)</span></h4>' +
+        '<details class="freq-detail"><summary>분야·유형별 빈도 펼쳐 보기</summary>' +
+        '<table class="freq-table"><thead><tr><th>분야</th><th>지적 유형</th><th class="num">건수</th></tr></thead><tbody>';
+      fc.forEach(function (r) {
+        r.topics.forEach(function (t, i) {
+          html += "<tr>" +
+            (i === 0 ? '<td rowspan="' + r.topics.length + '" class="fc-cat">' + esc(r.name) +
+              '<span class="fc-total">소계 ' + r.total + "</span></td>" : "") +
+            "<td>" + esc(t.title) + (t.freq >= 3 ? ' <span class="freq-star">★</span>' : "") +
+            '</td><td class="num">' + t.freq + "</td></tr>";
+        });
+      });
+      html += '<tr class="freq-grand"><td colspan="2">합계</td><td class="num">' + freqGrandTotal() + "</td></tr>";
+      html += "</tbody></table></details></div>";
+    }
+
+    html += "</div>";
+    $("#status-area").innerHTML = html;
+
+    var mr = document.getElementById("metrics-reset");
+    if (mr) mr.addEventListener("click", function () {
+      if (!confirm("사용 효과 측정 기록(점검 시간·준비도 추이)을 초기화할까요?\n점검 체크 내용은 그대로 유지됩니다.")) return;
+      metrics = { firstActAt: null, lastActAt: null, activeMs: 0, startPct: null, snapshots: [] };
+      save(LS_METRICS, metrics);
+      renderStats();
+    });
+  }
+
+  $("#reset-checks").addEventListener("click", function () {
+    if (confirm("모든 점검 체크·해당없음 표시를 초기화할까요? (메모와 수감자료 목록은 유지됩니다)")) {
+      checks = {}; naCases = {};
+      save(LS_CHECKS, checks); save(LS_NA, naCases);
+      renderCats(); renderCases(); renderStats();
+    }
+  });
+
+  /* ───────── 인쇄 보고서 ───────── */
+  $("#print-report").addEventListener("click", function () {
+    var today = new Date();
+    var dateStr = today.getFullYear() + ". " + (today.getMonth() + 1) + ". " + today.getDate() + ".";
+    var cp = totalProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+
+    var type = currentType();
+    var html = "<h1>학교 " + esc(type.name) + " 사전 자체점검 결과 보고</h1>" +
+      '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
+      (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
+      " · " + esc(type.name) + " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
+      '<table class="sign-table"><tr><th>담당</th><th>교감</th><th>교장</th></tr>' +
+      "<tr><td></td><td></td><td></td></tr></table>";
+
+    // 사용 효과 요약 (연구 효과성 근거) — 측정 기록이 있을 때만
+    var e = effectSummary();
+    if (e.hasData) {
+      var gain = e.nowPct - e.startPct;
+      html += '<p class="print-effect">▶ 사전 점검 효과: 점검 시작 ' +
+        new Date(e.firstActAt).toLocaleDateString("ko-KR") + " 이후 " + e.days + "일간, 누적 점검 시간 " +
+        e.activeStr + ", 종합 준비도 " + e.startPct + "% → " + e.nowPct + "%(" +
+        (gain >= 0 ? "+" + gain : gain) + "p)</p>";
+    }
+
+    // 요약 — 현재 감사 종류 범위 분야만
+    html += "<h2>점검 요약 — 전체 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
+      "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th><th>해당없음 처리 사례</th></tr></thead><tbody>";
+    scopeCats().forEach(function (cat) {
+      var p = catProgress(cat.id);
+      var naList = CASES.filter(function (c) { return c.cat === cat.id && naCases[c.id]; })
+        .map(function (c) { return c.title; }).join(", ");
+      html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
+        (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td><td class=\"na\">" + esc(naList || "-") + "</td></tr>";
+    });
+    html += "</tbody></table>";
+
+    // 분야별 상세 — 현재 감사 종류 범위 분야만
+    scopeCats().forEach(function (cat) {
+      var catCases = CASES.filter(function (c) { return c.cat === cat.id; });
+      if (!catCases.length) return;
+      html += "<h2>" + esc(cat.name) + "</h2>" +
+        "<table><thead><tr><th style=\"width:28%\">지적사례 유형</th><th>점검 문항</th><th style=\"width:8%\">결과</th></tr></thead><tbody>";
+      catCases.forEach(function (c) {
+        var rowSpan = c.checks.length + (memos[c.id] ? 1 : 0);
+        c.checks.forEach(function (q, i) {
+          var cell;
+          if (naCases[c.id]) cell = '<td class="na">해당없음</td>';
+          else if (checks[checkKey(c.id, i)]) cell = '<td class="ok">점검</td>';
+          else cell = '<td class="ng">미점검</td>';
+          html += "<tr>" + (i === 0 ? '<td rowspan="' + rowSpan + '">' + esc(c.title) + "</td>" : "") +
+            "<td>" + esc(q) + "</td>" + cell + "</tr>";
+        });
+        if (memos[c.id]) {
+          html += '<tr><td colspan="2" class="print-memo">✎ ' + esc(memos[c.id]) + "</td></tr>";
+        }
+      });
+      html += "</tbody></table>";
+    });
+
+    // 수감자료
+    if (board.length) {
+      var bp = boardProgress();
+      html += "<h2>수감자료 준비 현황 (" + bp.done + "/" + bp.total + "건)</h2>" +
+        "<table><thead><tr><th>항목</th><th>담당부서</th><th>담당자</th><th>상태</th></tr></thead><tbody>";
+      board.forEach(function (i) {
+        html += "<tr><td>" + esc(i.name) + "</td><td>" + esc(i.dept) + "</td><td>" + esc(i.owner) + "</td><td>" + esc(i.status) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    }
+
+    // 지적사례 빈도 집계표 (연구 근거자료)
+    var fc = freqByCategory();
+    if (fc.length) {
+      html += "<h2>[붙임] 지적사례 빈도 집계표 — 2025년 자체감사 사례집 수록 기준 (총 " + freqGrandTotal() + "건)</h2>" +
+        '<table class="print-freq"><thead><tr><th style="width:22%">분야</th><th>지적 유형</th><th style="width:10%">건수</th></tr></thead><tbody>';
+      fc.forEach(function (r) {
+        r.topics.forEach(function (t, i) {
+          html += "<tr>" +
+            (i === 0 ? '<td rowspan="' + r.topics.length + '">' + esc(r.name) + " (소계 " + r.total + ")</td>" : "") +
+            "<td>" + esc(t.title) + (t.freq >= 3 ? " ★" : "") + '</td><td class="num">' + t.freq + "</td></tr>";
+        });
+      });
+      html += '<tr class="freq-grand"><td colspan="2">합계</td><td class="num">' + freqGrandTotal() + "</td></tr>";
+      html += "</tbody></table>";
+    }
+
+    $("#print-area").innerHTML = html;
+    window.print();
+  });
+
+  /* ⑤ 인수인계 보고서 — 후임자가 이어받을 수 있도록 메모·해당없음 사유·담당 배분·다음 할 일 정리 */
+  $("#handover-report").addEventListener("click", function () {
+    var today = new Date();
+    var dateStr = today.getFullYear() + ". " + (today.getMonth() + 1) + ". " + today.getDate() + ".";
+    var cp = totalProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+
+    var type = currentType();
+    var html = "<h1>" + esc(type.name) + " 준비 인수인계 보고서</h1>" +
+      '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
+      (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
+      " · " + esc(type.name) + " · 작성일 " + dateStr + " · 준비도 " + checkPct + "%</p>" +
+      '<table class="sign-table"><tr><th>인계자</th><th>인수자</th><th>확인(교감)</th></tr>' +
+      "<tr><td></td><td></td><td></td></tr></table>";
+
+    // 1) 분야별 진행 요약 — 현재 감사 종류 범위
+    html += "<h2>1. 분야별 진행 상황</h2>" +
+      "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th></tr></thead><tbody>";
+    scopeCats().forEach(function (cat) {
+      var p = catProgress(cat.id);
+      html += "<tr><td>" + esc(cat.name) + "</td><td>" + p.done + "/" + p.total + "</td><td>" +
+        (p.total ? Math.round(p.done / p.total * 100) + "%" : "–") + "</td></tr>";
+    });
+    html += "</tbody></table>";
+
+    // 2) 인계 메모 (담당자가 남긴 메모) — 인수인계의 핵심 (현재 감사 종류 범위)
+    var memoCases = CASES.filter(function (c) { return memos[c.id] && inScope(c.cat); });
+    html += "<h2>2. 인계 메모 (" + memoCases.length + "건) — 확인한 문서·후임자에게 남길 말</h2>";
+    if (memoCases.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th style=\"width:30%\">사례</th><th>메모</th></tr></thead><tbody>";
+      memoCases.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) +
+          '</td><td class="print-memo">' + esc(memos[c.id]) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">남긴 메모가 없습니다. 각 사례의 ✎ 메모에 확인 결과를 기록하면 이 자리에 정리됩니다.</p>';
+    }
+
+    // 3) 해당없음 처리 사례 + 사유 (현재 감사 종류 범위)
+    var naList = CASES.filter(function (c) { return naCases[c.id] && inScope(c.cat); });
+    html += "<h2>3. 해당없음 처리 사례 (" + naList.length + "건) — 우리 학교 무관 사유 확인 필요</h2>";
+    if (naList.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";
+      naList.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">해당없음으로 처리한 사례가 없습니다.</p>';
+    }
+
+    // 4) 수감자료 담당 배분
+    html += "<h2>4. 수감자료 담당 배분 현황</h2>";
+    if (board.length) {
+      html += "<table><thead><tr><th>항목</th><th>담당부서</th><th>담당자</th><th>상태</th></tr></thead><tbody>";
+      board.forEach(function (i) {
+        html += "<tr><td>" + esc(i.name) + "</td><td>" + esc(i.dept) + "</td><td>" + esc(i.owner) + "</td><td>" + esc(i.status) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">등록된 수감자료 목록이 없습니다.</p>';
+    }
+
+    // 5) 후임자가 이어서 할 일 — 빈출(★) 미점검 (현재 감사 종류 범위)
+    var next = CASES.filter(function (c) { return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c); });
+    html += "<h2>5. 이어서 할 일 — 빈출(★) 사례 중 미완료 (" + next.length + "건)</h2>";
+    if (next.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th>사례</th></tr></thead><tbody>";
+      next.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">빈출 사례 점검을 모두 마쳤습니다.</p>';
+    }
+
+    $("#print-area").innerHTML = html;
+    window.print();
+  });
+
+  /* ───────── 예시 데이터 안내 배너 ───────── */
+  var LS_BANNER = "gamsanavi.bannerClosed.v1";
+  try {
+    if (localStorage.getItem(LS_BANNER)) $("#seed-banner").style.display = "none";
+  } catch (e) { /* 저장소 차단 시 배너 유지 */ }
+  $("#banner-close").addEventListener("click", function () {
+    $("#seed-banner").style.display = "none";
+    try { localStorage.setItem(LS_BANNER, "1"); } catch (e) { /* 무시 */ }
+  });
+
+  /* ───────── 초기화 ───────── */
+  $("#meta-line").textContent =
+    DATA_META.region + " · " + DATA_META.target + " · 데이터 기준일 " + DATA_META.updated +
+    " · " + DATA_META.status;
+  renderCats();
+  renderCases();
+  renderBoard();
+  renderDash();
+})();
+
+</script>
+</body>
+</html>

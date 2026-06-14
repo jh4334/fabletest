@@ -113,6 +113,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .cat-list .cat-name { font-weight: 700; font-size: 14px; }
 .cat-list .cat-desc { font-size: 12px; color: #667; }
 .cat-list .cat-prog { font-size: 12px; color: #1f6f3f; float: right; }
+.cat-scope-note { background: #eef3fb; border: 1px solid #cdd9ea; border-radius: 8px; padding: 8px 11px; margin-bottom: 8px; font-size: 12.5px; color: #1f3a5f; list-style: none; }
+.cat-scope-note span { display: block; color: #667; font-size: 11.5px; margin-top: 2px; }
+.dday-type { display: inline-block; background: #1f3a5f; color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 700; }
 
 .case-area { flex: 1; min-width: 0; }
 
@@ -138,6 +141,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .cat-na-bar { text-align: right; margin: 0 0 6px; }
 .case-basis { font-size: 13px; color: #555; background: #f2f5f9; padding: 6px 10px; border-radius: 6px; }
 .case-basis::before { content: "근거: "; font-weight: 700; color: #1f3a5f; }
+.law-link { color: #1a5fb4; text-decoration: none; border-bottom: 1px dotted #1a5fb4; }
+.law-link:hover { background: #e9f0fa; }
 .unverified { font-size: 11.5px; color: #b07b00; margin-left: 6px; }
 
 .check-list { margin-top: 10px; }
