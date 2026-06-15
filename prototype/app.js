@@ -9,6 +9,7 @@
   var LS_SETTINGS = "gamsanavi.settings.v1";  // { school, auditDate }
   var LS_METRICS  = "gamsanavi.metrics.v1";   // 사용 효과 측정용
   var LS_ROLE     = "gamsanavi.role.v1";      // 담당 역할 필터
+  var LS_MODE     = "gamsanavi.mode.v1";      // 점검 모드: core(핵심·자주) / all(전체)
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -45,6 +46,10 @@
   var searchTerm = "";
   var activeRole = "";
   try { activeRole = localStorage.getItem(LS_ROLE) || ""; } catch (e) { /* 차단 시 무시 */ }
+  var checkMode = "all"; // 기본: 전체 점검(첫인상에서 항목이 숨지 않도록)
+  try { checkMode = localStorage.getItem(LS_MODE) || "all"; } catch (e) { /* 무시 */ }
+  /* 점검 모드: 핵심(자주 지적되는 빈출 ★ 사례만) / 전체 */
+  function caseInMode(c) { return checkMode === "all" || (c.freq || 0) >= 3; }
   /* 복원된 역할에 맞춰 첫 활성 분야를 보이는 분야 중 하나로 맞춘다(아래 visibleCategories 사용) */
 
   /* ───────── 사용 효과 측정 (연구 효과성 검증용) ───────── */
@@ -122,11 +127,11 @@
     return c.checks.every(function (_, i) { return checks[checkKey(c.id, i)]; });
   }
 
-  /* 해당없음 처리된 사례는 진행률 분모에서 제외 */
+  /* 진행률 분모에서 제외: 해당없음 처리 사례 + 현재 점검 모드 밖(핵심 모드의 비빈출) 사례 */
   function catProgress(catId) {
     var total = 0, done = 0;
     CASES.forEach(function (c) {
-      if (c.cat !== catId || naCases[c.id]) return;
+      if (c.cat !== catId || naCases[c.id] || !caseInMode(c)) return;
       c.checks.forEach(function (_, i) {
         total++;
         if (checks[checkKey(c.id, i)]) done++;
@@ -337,8 +342,10 @@
     var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
     var boardPct = bp.total ? Math.round(bp.done / bp.total * 100) : null;
     var scorePct = boardPct === null ? checkPct : Math.round((checkPct + boardPct) / 2);
+    var modeLabel = checkMode === "core" ? "핵심(자주 지적)" : "전체";
     $("#dash-score").textContent = scorePct + "%";
     $("#dash-score-detail").innerHTML =
+      '<span class="mode-tag">' + modeLabel + " 점검 기준</span><br>" +
       "자체점검 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)<br>" +
       (boardPct === null ? "수감자료 목록 미등록" :
         "수감자료 " + bp.done + "/" + bp.total + "건 (" + boardPct + "%)");
@@ -451,6 +458,25 @@
     });
   })();
 
+  /* 점검 모드(핵심/전체) 토글 */
+  function refreshModeButtons() {
+    document.querySelectorAll(".mode-btn").forEach(function (btn) {
+      var on = btn.dataset.mode === checkMode;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  function setMode(m) {
+    checkMode = (m === "core") ? "core" : "all";
+    try { localStorage.setItem(LS_MODE, checkMode); } catch (e) { /* 무시 */ }
+    refreshModeButtons();
+    renderCats(); renderCases(); renderDash(); renderStats();
+  }
+  document.querySelectorAll(".mode-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () { setMode(btn.dataset.mode); });
+  });
+  refreshModeButtons();
+
   function matchesSearch(c, term) {
     var hay = (c.title + " " + c.detail + " " + c.basis + " " + c.checks.join(" ") + " " +
       (c.examples || []).join(" ")).toLowerCase();
@@ -458,18 +484,28 @@
   }
 
   function renderCases() {
-    var list = searchTerm
+    var fullList = searchTerm
       ? CASES.filter(function (c) { return matchesSearch(c, searchTerm); })
       : CASES.filter(function (c) { return c.cat === activeCat; });
+    // 점검 모드(핵심/전체) 적용
+    var list = fullList.filter(caseInMode);
 
     if (!list.length) {
-      $("#case-area").innerHTML = '<p class="empty">표시할 사례가 없습니다.</p>';
+      // 핵심 모드라 빈출 사례가 없어 비었으면 전체 보기로 전환을 안내
+      if (checkMode === "core" && fullList.length) {
+        $("#case-area").innerHTML = '<p class="empty">이 분야에는 자주 지적되는(빈출 ★) 사례가 없습니다.<br>' +
+          '<button type="button" class="link-btn" id="switch-all">전체 점검 모드로 보기</button></p>';
+        var sa = document.getElementById("switch-all");
+        if (sa) sa.addEventListener("click", function () { setMode("all"); });
+      } else {
+        $("#case-area").innerHTML = '<p class="empty">표시할 사례가 없습니다.</p>';
+      }
       return;
     }
     var html = "";
-    // 분야 전체가 우리 학교와 무관할 때(예: 공립학교의 사학분야) 한 번에 제외
+    // 분야 전체가 우리 학교와 무관할 때(예: 공립학교의 사학분야) 한 번에 제외 — 모드와 무관하게 전체 사례 대상
     if (!searchTerm) {
-      var allNA = list.every(function (c) { return naCases[c.id]; });
+      var allNA = fullList.every(function (c) { return naCases[c.id]; });
       html += '<div class="cat-na-bar no-print"><button type="button" class="link-btn" id="cat-na-all">' +
         (allNA ? "↩ 이 분야 전체를 점검 대상으로 되돌리기" : "이 분야 전체 해당없음(우리 학교 무관)") +
         "</button></div>";
@@ -522,9 +558,9 @@
     var naAllBtn = document.getElementById("cat-na-all");
     if (naAllBtn) {
       naAllBtn.addEventListener("click", function () {
-        var allNA = list.every(function (c) { return naCases[c.id]; });
-        if (!allNA && !confirm("이 분야의 사례 " + list.length + "건을 모두 '해당없음'으로 표시할까요?")) return;
-        list.forEach(function (c) {
+        var allNA = fullList.every(function (c) { return naCases[c.id]; });
+        if (!allNA && !confirm("이 분야의 사례 " + fullList.length + "건을 모두 '해당없음'으로 표시할까요?")) return;
+        fullList.forEach(function (c) {
           if (allNA) delete naCases[c.id];
           else naCases[c.id] = true;
         });
@@ -1020,10 +1056,11 @@
     var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
 
     var type = currentType();
+    var modeLabel = checkMode === "core" ? "핵심(자주 지적) 점검" : "전체 점검";
     var html = "<h1>학교 " + esc(type.name) + " 사전 자체점검 결과 보고</h1>" +
       '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
       (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
-      " · " + esc(type.name) + " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
+      " · " + esc(type.name) + " · " + modeLabel + " · 점검일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>" +
       '<table class="sign-table"><tr><th>담당</th><th>교감</th><th>교장</th></tr>' +
       "<tr><td></td><td></td><td></td></tr></table>";
 
@@ -1038,7 +1075,8 @@
     }
 
     // 요약 — 현재 감사 종류 범위 분야만
-    html += "<h2>점검 요약 — 전체 " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
+    html += "<h2>점검 요약 — " + modeLabel + " " + cp.done + "/" + cp.total + "문항 (" + checkPct + "%)</h2>" +
+      (checkMode === "core" ? '<p class="print-mode-note">※ 자주 지적되는(빈출 ★) 사례만 표시한 핵심 점검 결과입니다. 전체 점검 결과는 [전체 점검] 모드에서 인쇄하세요.</p>' : "") +
       "<table><thead><tr><th>분야</th><th>점검/전체</th><th>진행률</th><th>해당없음 처리 사례</th></tr></thead><tbody>";
     scopeCats().forEach(function (cat) {
       var p = catProgress(cat.id);
@@ -1051,7 +1089,7 @@
 
     // 분야별 상세 — 현재 감사 종류 범위 분야만
     scopeCats().forEach(function (cat) {
-      var catCases = CASES.filter(function (c) { return c.cat === cat.id; });
+      var catCases = CASES.filter(function (c) { return c.cat === cat.id && caseInMode(c); });
       if (!catCases.length) return;
       html += "<h2>" + esc(cat.name) + "</h2>" +
         "<table><thead><tr><th style=\"width:28%\">지적사례 유형</th><th>점검 문항</th><th style=\"width:8%\">결과</th></tr></thead><tbody>";
@@ -1111,10 +1149,11 @@
     var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
 
     var type = currentType();
+    var modeLabel = checkMode === "core" ? "핵심(자주 지적) 점검" : "전체 점검";
     var html = "<h1>" + esc(type.name) + " 준비 인수인계 보고서</h1>" +
       '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
       (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
-      " · " + esc(type.name) + " · 작성일 " + dateStr + " · 준비도 " + checkPct + "%</p>" +
+      " · " + esc(type.name) + " · " + modeLabel + " · 작성일 " + dateStr + " · 준비도 " + checkPct + "%</p>" +
       '<table class="sign-table"><tr><th>인계자</th><th>인수자</th><th>확인(교감)</th></tr>' +
       "<tr><td></td><td></td><td></td></tr></table>";
 

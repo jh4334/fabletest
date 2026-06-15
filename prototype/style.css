@@ -91,6 +91,15 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .tl-note { font-size: 11.5px; color: #889; }
 .tl-empty { color: #889; font-size: 13px; padding: 6px 0; }
 
+/* 점검 모드 토글(핵심/전체) */
+.mode-toggle { display: flex; gap: 0; margin-bottom: 10px; border: 1px solid #c6cedb; border-radius: 8px; overflow: hidden; }
+.mode-btn { flex: 1; border: 0; background: #fff; color: #556; padding: 8px 6px; cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1.2; }
+.mode-btn small { display: block; font-size: 10.5px; font-weight: 400; color: #99a; margin-top: 1px; }
+.mode-btn + .mode-btn { border-left: 1px solid #c6cedb; }
+.mode-btn.active { background: #1f3a5f; color: #fff; }
+.mode-btn.active small { color: #cdd9ea; }
+.mode-tag { display: inline-block; background: #eef3fb; color: #1f3a5f; border-radius: 9px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; }
+
 /* ④ 역할 선택 */
 .role-pick { display: block; margin-bottom: 10px; }
 .role-pick span { display: block; font-size: 12px; color: #556; margin-bottom: 3px; }
@@ -272,6 +281,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .na { color: #888; }
   .print-memo { color: #555; }
   .print-effect { font-size: 11.5px; color: #1f3a5f; background: #f2f7f3; border: 1px solid #cfe3d4; border-radius: 6px; padding: 6px 10px; margin: 0 0 12px; }
+  .print-mode-note { font-size: 11.5px; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a6; border-radius: 6px; padding: 6px 10px; margin: -6px 0 10px; }
   .print-freq td.num { text-align: right; }
   .print-freq .freq-grand td { background: #eee; font-weight: 700; }
   .hd-none { font-size: 11px; color: #888; margin: 2px 0 8px; }
