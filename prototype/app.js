@@ -14,6 +14,7 @@
   var LS_FEEDBACK = "gamsanavi.feedback.v1";  // 감사 후 실제 지적 환류 기록
   var LS_TIMELINE = "gamsanavi.timeline.v1";  // 준비 일정 단계 완료 체크
   var LS_ARCHIVES = "gamsanavi.archives.v1";  // 감사 회차별 보관(아카이브)
+  var LS_DATAVER  = "gamsanavi.dataver.v1";   // 직전 사용 시점의 data.js 기준일(DATA_META.updated)
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -1913,7 +1914,26 @@
     try { localStorage.setItem(LS_BANNER, "1"); } catch (e) { /* 무시 */ }
   });
 
+  /* ───────── 데이터 갱신 안내 ─────────
+     매년 새 사례집으로 data.js가 교체되면 DATA_META.updated가 바뀐다.
+     이전에 이 PC에서 사용한 기준일과 다르면, 1회 안내 배너를 띄운다.
+     (점검 체크·메모 등은 caseId 기준으로 보존되므로 그대로 유지됨) */
+  (function checkDataUpdate() {
+    var prev = null;
+    try { prev = localStorage.getItem(LS_DATAVER); } catch (e) { /* 저장소 차단 시 무시 */ }
+    if (prev && prev !== DATA_META.updated) {
+      $("#update-prev").textContent = prev;
+      $("#update-now").textContent = DATA_META.updated;
+      $("#update-banner").hidden = false;
+    }
+    try { localStorage.setItem(LS_DATAVER, DATA_META.updated); } catch (e) { /* 무시 */ }
+  })();
+  $("#update-banner-close").addEventListener("click", function () {
+    $("#update-banner").hidden = true;
+  });
+
   /* ───────── 초기화 ───────── */
+  $("#data-ver").textContent = "📅 데이터 기준: " + DATA_META.status + " (" + DATA_META.updated + " 갱신)";
   $("#meta-line").textContent =
     DATA_META.region + " · " + DATA_META.target + " · 데이터 기준일 " + DATA_META.updated +
     " · " + DATA_META.status;
