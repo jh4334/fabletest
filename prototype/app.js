@@ -12,6 +12,8 @@
   var LS_MODE     = "gamsanavi.mode.v1";      // 점검 모드: core(핵심·자주) / all(전체)
   var LS_SURVEY   = "gamsanavi.survey.v1";    // 사용자 설문 응답(연구 효과성)
   var LS_FEEDBACK = "gamsanavi.feedback.v1";  // 감사 후 실제 지적 환류 기록
+  var LS_TIMELINE = "gamsanavi.timeline.v1";  // 준비 일정 단계 완료 체크
+  var LS_ARCHIVES = "gamsanavi.archives.v1";  // 감사 회차별 보관(아카이브)
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -38,6 +40,8 @@
   var memos    = load(LS_MEMO, {});
   var survey   = load(LS_SURVEY, { responses: {}, comment: "", submittedAt: null });
   var feedback = load(LS_FEEDBACK, {}); // { caseId: { note: "실제 지적 내용", at: ISO } }
+  var tlDone   = load(LS_TIMELINE, {}); // { stepId: true } 준비 일정 단계 완료
+  var archives = load(LS_ARCHIVES, []); // [{ id, savedAt, label, auditDate, auditType, scorePct, checkPct, boardPct, checksDone, checksTotal, feedbackIds, days, activeMs }]
   var settings = load(LS_SETTINGS, { school: "", auditDate: "", auditType: "jonghap" });
   var metrics  = load(LS_METRICS, {
     firstActAt: null,   // 최초 점검 시각(ISO)
@@ -296,46 +300,96 @@
 
   /* ⑥ 감사 준비 일정 — 감사실무매뉴얼 기준 D-day 역산 작업 */
   var TIMELINE = [
-    { off: 30, task: "분야별 자체점검 착수 — 빈출(★) 사례부터 확인", note: "준비 기간 확보" },
-    { key: "submit", off: 10, task: "수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
-    { off: 7,  task: "감사계획 통보 수령·검토 (감사대상·범위·기간)", note: "감사예정일 7일 전(시행령 §12)" },
-    { off: 3,  task: "수감자료·비치서류 최종 점검, 담당별 준비 상태 확인", note: "" },
-    { off: 1,  task: "감사장 설치·준비물 확인 (복사기·프린터·파쇄기·통장·사무용품)", note: "감사실무매뉴얼 감사당일 준비" },
-    { off: 0,  task: "감사 개시 — 기관장 환담, 수감 시작", note: "" }
+    { id: "start",  off: 30, task: "분야별 자체점검 착수 — 빈출(★) 사례부터 확인", note: "준비 기간 확보" },
+    { id: "submit", key: "submit", off: 10, task: "수감자료 제출", note: "감사 개시 10일 전까지(자체감사 규칙 §20④)" },
+    { id: "notice", off: 7,  task: "감사계획 통보 수령·검토 (감사대상·범위·기간)", note: "감사예정일 7일 전(시행령 §12)" },
+    { id: "final",  off: 3,  task: "수감자료·비치서류 최종 점검, 담당별 준비 상태 확인", note: "" },
+    { id: "setup",  off: 1,  task: "감사장 설치·준비물 확인 (복사기·프린터·파쇄기·통장·사무용품)", note: "감사실무매뉴얼 감사당일 준비" },
+    { id: "open",   off: 0,  task: "감사 개시 — 기관장 환담, 수감 시작", note: "" }
   ];
-  function renderTimeline() {
-    var el = $("#dash-timeline");
-    if (!settings.auditDate) {
-      el.innerHTML = '<li class="tl-empty">감사 예정일을 입력하면 매뉴얼 기준 준비 일정이 역산되어 표시됩니다.</li>';
-      return;
-    }
+  /* 현재 감사 종류·예정일에 맞춘 일정 단계(날짜 포함) 산출 — 렌더·.ics 공용 */
+  function timelineSteps() {
+    if (!settings.auditDate) return [];
     var type = currentType();
-    var today = new Date(); today.setHours(0, 0, 0, 0);
     var target = new Date(settings.auditDate + "T00:00:00");
-    // 감사 종류에 맞춰 수감자료 제출(off) 행을 조정한다
-    var steps = TIMELINE.map(function (t) {
+    return TIMELINE.map(function (t) {
+      var step = t;
       if (t.key === "submit") {
-        if (type.subDays === null) return null; // 일상감사 등: 수감자료 단계 없음
-        return { off: type.subDays, task: "수감자료 제출",
+        if (type.subDays === null) return null;
+        step = { id: "submit", off: type.subDays, task: "수감자료 제출",
           note: type.comp ? "감사 개시 10일 전까지(자체감사 규칙 §20④)" : "기관 지정 기한 확인(감사 개시 " + type.subDays + "일 전 권장)" };
       }
-      return t;
+      var d = new Date(target); d.setDate(d.getDate() - step.off);
+      return { id: step.id, task: step.task, note: step.note, date: d };
     }).filter(Boolean);
+  }
+  function renderTimeline() {
+    var el = $("#dash-timeline");
+    var icsBtn = $("#timeline-ics");
+    if (!settings.auditDate) {
+      el.innerHTML = '<li class="tl-empty">감사 예정일을 입력하면 매뉴얼 기준 준비 일정이 역산되어 표시됩니다.</li>';
+      if (icsBtn) icsBtn.hidden = true;
+      return;
+    }
+    if (icsBtn) icsBtn.hidden = false;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var steps = timelineSteps();
     el.innerHTML = steps.map(function (t) {
-      var d = new Date(target); d.setDate(d.getDate() - t.off);
+      var d = t.date;
       var dstr = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
       var ddiff = Math.round((d - today) / 86400000);
+      var done = !!tlDone[t.id];
       var state, badge;
-      if (ddiff < 0) { state = "past"; badge = "지남"; }
+      if (done) { state = "done"; badge = "완료"; }
+      else if (ddiff < 0) { state = "past"; badge = "지남"; }
       else if (ddiff === 0) { state = "today"; badge = "오늘"; }
       else if (ddiff <= 7) { state = "soon"; badge = "D-" + ddiff; }
       else { state = "future"; badge = "D-" + ddiff; }
       return '<li class="tl-item tl-' + state + '">' +
+        '<label class="tl-check"><input type="checkbox" data-tl="' + t.id + '"' + (done ? " checked" : "") + "></label>" +
         '<span class="tl-date">' + dstr + '</span>' +
         '<span class="tl-badge">' + badge + "</span>" +
         '<span class="tl-task">' + esc(t.task) +
         (t.note ? ' <span class="tl-note">' + esc(t.note) + "</span>" : "") + "</span></li>";
     }).join("");
+    el.querySelectorAll('input[type="checkbox"][data-tl]').forEach(function (box) {
+      box.addEventListener("change", function () {
+        if (box.checked) tlDone[box.dataset.tl] = true;
+        else delete tlDone[box.dataset.tl];
+        save(LS_TIMELINE, tlDone);
+        renderTimeline();
+      });
+    });
+  }
+  /* 준비 일정을 캘린더(.ics, RFC5545)로 내보내기 — 종일 일정 */
+  function buildICS() {
+    var steps = timelineSteps();
+    function pad(n) { return ("0" + n).slice(-2); }
+    function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+    function escICS(s) { return String(s).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n"); }
+    var now = new Date();
+    var stamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + "T" +
+      pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + "Z";
+    var school = settings.school || "우리 학교";
+    var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//감사내비//KR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    steps.forEach(function (t) {
+      var dEnd = new Date(t.date); dEnd.setDate(dEnd.getDate() + 1);
+      lines.push("BEGIN:VEVENT");
+      lines.push("UID:gamsanavi-" + t.id + "-" + ymd(t.date) + "@local");
+      lines.push("DTSTAMP:" + stamp);
+      lines.push("DTSTART;VALUE=DATE:" + ymd(t.date));
+      lines.push("DTEND;VALUE=DATE:" + ymd(dEnd));
+      lines.push("SUMMARY:" + escICS("[감사준비] " + t.task));
+      lines.push("DESCRIPTION:" + escICS((school + " " + currentType().name + " 준비 일정") + (t.note ? "\n" + t.note : "")));
+      lines.push("BEGIN:VALARM");
+      lines.push("TRIGGER:-P1D"); // 하루 전 알림
+      lines.push("ACTION:DISPLAY");
+      lines.push("DESCRIPTION:" + escICS("[감사준비] " + t.task));
+      lines.push("END:VALARM");
+      lines.push("END:VEVENT");
+    });
+    lines.push("END:VCALENDAR");
+    return lines.join("\r\n");
   }
 
   /* ───────── 탭0: 대시보드 ───────── */
@@ -459,6 +513,12 @@
       activeCat = vis.length ? vis[0].id : scopeCats()[0].id;
     }
     renderDash(); renderCats(); renderCases(); renderStats();
+  });
+
+  $("#timeline-ics").addEventListener("click", function () {
+    if (!settings.auditDate) { alert("먼저 감사 예정일을 입력하세요."); return; }
+    var name = "감사준비일정_" + (settings.auditDate || "") + ".ics";
+    downloadFile(name, buildICS(), "text/calendar;charset=utf-8");
   });
 
   /* ───────── 탭1: 분야별 자체점검 ───────── */
@@ -908,9 +968,9 @@
 
   $("#backup-btn").addEventListener("click", function () {
     var payload = {
-      app: "gamsanavi", version: 4, exportedAt: new Date().toISOString(),
+      app: "gamsanavi", version: 5, exportedAt: new Date().toISOString(),
       settings: settings, checks: checks, board: board, na: naCases, memos: memos,
-      metrics: metrics, survey: survey, feedback: feedback
+      metrics: metrics, survey: survey, feedback: feedback, timeline: tlDone, archives: archives
     };
     var name = "감사내비_백업_" + new Date().toISOString().slice(0, 10) + ".json";
     downloadFile(name, JSON.stringify(payload, null, 2), "application/json");
@@ -979,6 +1039,24 @@
     });
     return out;
   }
+  function sanitizeArchives(arr) {
+    return (Array.isArray(arr) ? arr : []).filter(function (a) {
+      return a && typeof a === "object" && typeof a.savedAt === "string";
+    }).map(function (a) {
+      return {
+        id: String(a.id || "arc-" + Math.random().toString(36).slice(2)),
+        savedAt: a.savedAt,
+        label: String(a.label || a.savedAt.slice(0, 10)),
+        auditDate: typeof a.auditDate === "string" ? a.auditDate : "",
+        auditType: typeof a.auditType === "string" ? a.auditType : "jonghap",
+        scorePct: +a.scorePct || 0, checkPct: +a.checkPct || 0,
+        boardPct: a.boardPct == null ? null : +a.boardPct,
+        checksDone: +a.checksDone || 0, checksTotal: +a.checksTotal || 0,
+        feedbackIds: Array.isArray(a.feedbackIds) ? a.feedbackIds.map(String) : [],
+        days: +a.days || 0, activeMs: +a.activeMs || 0
+      };
+    });
+  }
 
   $("#restore-btn").addEventListener("click", function () { $("#restore-file").click(); });
   $("#restore-file").addEventListener("change", function () {
@@ -1002,9 +1080,12 @@
       metrics  = sanitizeMetrics(payload.metrics);
       survey   = sanitizeSurvey(payload.survey);
       feedback = sanitizeFeedback(payload.feedback);
+      tlDone   = sanitizeObject(payload.timeline);
+      archives = sanitizeArchives(payload.archives);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
       save(LS_MEMO, memos); save(LS_SETTINGS, settings); save(LS_METRICS, metrics);
-      save(LS_SURVEY, survey); save(LS_FEEDBACK, feedback);
+      save(LS_SURVEY, survey); save(LS_FEEDBACK, feedback); save(LS_TIMELINE, tlDone);
+      save(LS_ARCHIVES, archives);
       $("#set-type").value = settings.auditType;
       var vis = visibleCategories();
       if (!vis.some(function (c) { return c.id === activeCat; })) activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
@@ -1283,6 +1364,101 @@
     return html;
   }
 
+  /* ㉰ 감사 회차별 아카이브 & 비교 — 예방 효과(반복 지적 감소)를 시간축으로 입증 */
+  function snapshotCurrent(label) {
+    var cp = totalProgress(), bp = boardProgress();
+    var checkPct = cp.total ? Math.round(cp.done / cp.total * 100) : 0;
+    var boardPct = bp.total ? Math.round(bp.done / bp.total * 100) : null;
+    var scorePct = boardPct === null ? checkPct : Math.round((checkPct + boardPct) / 2);
+    var e = effectSummary();
+    return {
+      id: "arc-" + Date.now(),
+      savedAt: new Date().toISOString(),
+      label: label || (settings.auditDate || new Date().toISOString().slice(0, 10)),
+      auditDate: settings.auditDate || "",
+      auditType: settings.auditType || "jonghap",
+      scorePct: scorePct, checkPct: checkPct, boardPct: boardPct,
+      checksDone: cp.done, checksTotal: cp.total,
+      feedbackIds: Object.keys(feedback),
+      days: e.hasData ? e.days : 0,
+      activeMs: metrics.activeMs || 0
+    };
+  }
+  function archiveCurrentCycle() {
+    var def = settings.auditDate ? (settings.auditDate + " " + currentType().name) : "";
+    var label = prompt("이번 감사 회차를 어떤 이름으로 보관할까요?\n(예: 2026 종합감사)", def);
+    if (label === null) return;
+    label = label.trim() || def || new Date().toISOString().slice(0, 10);
+    archives.push(snapshotCurrent(label));
+    archives.sort(function (a, b) { return a.savedAt < b.savedAt ? -1 : 1; });
+    save(LS_ARCHIVES, archives);
+    renderStats();
+    alert("'" + label + "' 회차를 보관했습니다.\n다음 감사 때 회차별 비교와 반복 지적 분석에 활용됩니다.");
+  }
+  /* 반복 지적 분석: 보관 회차들 + 현재의 지적사례 id를 모아 회차별 등장 횟수를 센다 */
+  function recurringFindings() {
+    var cycles = archives.map(function (a) { return { label: a.label, ids: a.feedbackIds || [] }; });
+    // 현재(미보관) 지적도 포함 — 진행 중인 회차
+    if (Object.keys(feedback).length) cycles.push({ label: "현재(미보관)", ids: Object.keys(feedback) });
+    var count = {};
+    cycles.forEach(function (cy) {
+      var seen = {};
+      cy.ids.forEach(function (id) { if (!seen[id]) { seen[id] = true; count[id] = (count[id] || 0) + 1; } });
+    });
+    var repeated = Object.keys(count).filter(function (id) { return count[id] >= 2; })
+      .map(function (id) {
+        var c = CASES.filter(function (x) { return x.id === id; })[0];
+        return { id: id, title: c ? c.title : id, cat: c ? c.cat : "", times: count[id], resolved: c ? caseDone(c) : false };
+      }).sort(function (a, b) { return b.times - a.times; });
+    return { cycles: cycles.length, repeated: repeated };
+  }
+  function archiveCardHTML() {
+    var html = '<div class="status-card status-wide archive-card"><h4>감사 회차별 비교 (아카이브) ' +
+      '<span class="muted">— 회차를 보관해 두면 예방 효과(반복 지적 감소)를 시간축으로 확인</span>' +
+      '<button type="button" class="link-btn arc-save-btn" id="arc-save">📦 이번 회차 보관</button></h4>';
+    if (!archives.length) {
+      html += '<p class="hint">아직 보관한 회차가 없습니다. 한 번의 감사 준비가 끝나면 <b>[이번 회차 보관]</b>으로 ' +
+        '준비도·점검·지적사항을 스냅샷으로 남기세요. 다음 감사 때 회차별로 비교됩니다.</p></div>';
+      return html;
+    }
+    // 회차별 지표 표
+    html += '<table class="archive-table"><thead><tr><th>회차</th><th class="num">준비도</th>' +
+      '<th class="num">점검</th><th class="num">지적</th><th class="num">점검시간</th><th class="no-print"></th></tr></thead><tbody>';
+    archives.forEach(function (a) {
+      html += '<tr><td>' + esc(a.label) +
+        '<span class="arc-date">' + (a.auditDate || a.savedAt.slice(0, 10)) + "</span></td>" +
+        '<td class="num"><b>' + a.scorePct + "%</b></td>" +
+        '<td class="num">' + a.checksDone + "/" + a.checksTotal + "</td>" +
+        '<td class="num">' + (a.feedbackIds ? a.feedbackIds.length : 0) + "건</td>" +
+        '<td class="num">' + fmtDuration(a.activeMs || 0) + "</td>" +
+        '<td class="no-print"><button class="del-btn" data-arc-del="' + a.id + '" title="삭제">✕</button></td></tr>';
+    });
+    html += "</tbody></table>";
+    // 준비도 회차 추이 막대
+    if (archives.length >= 2) {
+      var maxScore = 100;
+      html += '<div class="arc-trend">' + archives.map(function (a) {
+        return '<div class="arc-bar-col"><div class="arc-bar" style="height:' + Math.max(3, a.scorePct) + '%"></div>' +
+          '<div class="arc-bar-pct">' + a.scorePct + "%</div>" +
+          '<div class="arc-bar-lbl">' + esc(a.label.length > 10 ? a.label.slice(0, 9) + "…" : a.label) + "</div></div>";
+      }).join("") + "</div>";
+    }
+    // 반복 지적 분석
+    var rf = recurringFindings();
+    html += '<div class="arc-recur"><h5>반복 지적 분석 <span class="muted">— 2개 이상 회차에서 지적된 만성 항목</span></h5>';
+    if (rf.repeated.length) {
+      html += '<ul class="recur-list">' + rf.repeated.map(function (r) {
+        return '<li role="button" tabindex="0" data-goto="' + r.cat + '"><span class="recur-times">' + r.times + '개 회차</span> ' +
+          esc(r.title) + (r.resolved ? '<span class="recur-ok">✔ 이번 점검 완료</span>' : '<span class="recur-warn">⚠ 미점검 — 우선 확인</span>') + "</li>";
+      }).join("") + "</ul>";
+    } else {
+      html += '<p class="hint">반복 지적된 항목이 없습니다. ' +
+        (rf.cycles >= 2 ? "지적이 회차마다 달라지거나 줄고 있다면 예방이 잘 되고 있다는 신호입니다." : "회차를 2개 이상 보관하면 분석됩니다.") + "</p>";
+    }
+    html += "</div></div>";
+    return html;
+  }
+
   function renderStats() {
     var html = '<div class="status-grid">';
 
@@ -1294,6 +1470,9 @@
 
     // ②-3 사용 만족도 설문 (연구 효과성)
     html += surveyCardHTML();
+
+    // ②-4 감사 회차별 비교 (아카이브) — 예방 효과 입증
+    html += archiveCardHTML();
 
     // 분야별 사례 분포 (데이터 분석 관점)
     var counts = CATEGORIES.map(function (cat) {
@@ -1437,6 +1616,21 @@
       survey = { responses: {}, comment: "", submittedAt: null };
       save(LS_SURVEY, survey);
       renderStats();
+    });
+
+    // 회차별 아카이브
+    var arcSave = document.getElementById("arc-save");
+    if (arcSave) arcSave.addEventListener("click", archiveCurrentCycle);
+    document.querySelectorAll("#status-area [data-arc-del]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (!confirm("이 보관 회차를 삭제할까요?")) return;
+        archives = archives.filter(function (a) { return a.id !== btn.dataset.arcDel; });
+        save(LS_ARCHIVES, archives);
+        renderStats();
+      });
+    });
+    document.querySelectorAll("#status-area .recur-list [data-goto]").forEach(function (el) {
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
   }
 
@@ -1681,6 +1875,28 @@
       if (!s.submitted) html += '<p class="hd-none">※ 아직 제출 전 상태의 응답입니다.</p>';
     } else {
       html += '<p class="hd-none">설문 응답이 없습니다. [통계·보고서]의 사용 만족도 설문을 작성하세요.</p>';
+    }
+
+    html += "<h2>3. 감사 회차별 비교 (예방 효과)</h2>";
+    if (archives.length) {
+      html += '<table class="appx-arc"><thead><tr><th>회차</th><th class="num">준비도</th>' +
+        '<th class="num">점검</th><th class="num">실제 지적</th></tr></thead><tbody>';
+      archives.forEach(function (a) {
+        html += "<tr><td>" + esc(a.label) + "</td>" +
+          '<td class="num">' + a.scorePct + "%</td>" +
+          '<td class="num">' + a.checksDone + "/" + a.checksTotal + "</td>" +
+          '<td class="num">' + (a.feedbackIds ? a.feedbackIds.length : 0) + "건</td></tr>";
+      });
+      html += "</tbody></table>";
+      var rf = recurringFindings();
+      if (rf.repeated.length) {
+        html += '<p class="appx-comment"><b>반복 지적(만성) 항목:</b> ' +
+          rf.repeated.map(function (r) { return esc(r.title) + "(" + r.times + "회차)"; }).join(", ") + "</p>";
+      } else if (rf.cycles >= 2) {
+        html += '<p class="appx-comment">2개 이상 회차에서 반복된 지적이 없습니다 — 예방 효과 신호.</p>';
+      }
+    } else {
+      html += '<p class="hd-none">보관된 감사 회차가 없습니다. 회차를 보관하면 준비도·지적 추이가 비교됩니다.</p>';
     }
 
     $("#print-area").innerHTML = html;
