@@ -278,8 +278,43 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 .es-num small { font-size: 13px; font-weight: 700; }
 .es-lbl { display: block; font-size: 12px; color: #557; margin-top: 2px; }
 .spark-wrap { margin: 4px 0 8px; }
-.sparkline { display: block; width: 100%; max-width: 360px; height: 56px; background: #f7faf8; border: 1px solid #e0ece2; border-radius: 6px; }
+.sparkline { display: block; width: 100%; max-width: 360px; height: 100px; background: #f7faf8; border: 1px solid #e0ece2; border-radius: 6px; }
 .spark-axis { display: flex; justify-content: space-between; max-width: 360px; font-size: 11px; color: #889; margin-top: 2px; }
+.effect-charts { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; margin: 6px 0 8px; }
+.ba-chart { background: #f7faf8; border: 1px solid #e0ece2; border-radius: 6px; }
+
+/* 부서·담당 역할별 점검 현황 */
+.role-prog-table { width: 100%; border-collapse: collapse; }
+.role-prog-table td { padding: 8px 6px; border-bottom: 1px solid #eef1f6; vertical-align: middle; }
+.rp-name { font-weight: 700; color: #1f3a5f; font-size: 13.5px; width: 32%; }
+.rp-cats { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+.rp-cat { font-size: 11px; font-weight: 400; color: #557; background: #eef2f8; border-radius: 10px; padding: 1px 7px; cursor: pointer; }
+.rp-cat:hover { background: #dde7f4; }
+.rp-bar { width: 50%; }
+.rp-num { text-align: right; font-weight: 700; color: #445; white-space: nowrap; }
+
+/* 사용 만족도 설문 */
+.survey-card .hint { margin-bottom: 8px; }
+.survey-done { background: #eef7f0; border: 1px solid #cfe3d4; border-radius: 6px; padding: 6px 10px; color: #1f6f3f; font-size: 13px; margin-bottom: 8px; }
+.survey-table { width: 100%; border-collapse: collapse; }
+.survey-table td { padding: 6px 4px; border-bottom: 1px solid #eef1f6; }
+.sv-q { font-size: 13px; color: #334; }
+.sv-opts { white-space: nowrap; text-align: right; width: 200px; }
+.sv-opt { display: inline-flex; flex-direction: column; align-items: center; margin-left: 6px; cursor: pointer; font-size: 11px; color: #778; }
+.sv-opt input { cursor: pointer; }
+.sv-scale-legend { font-size: 11px; color: #889; margin: 6px 0 10px; }
+.sv-comment-label { display: block; font-size: 13px; color: #445; font-weight: 700; }
+.sv-comment-label textarea { width: 100%; margin-top: 4px; border: 1px solid #c6cedb; border-radius: 6px; padding: 6px 8px; font: inherit; font-weight: 400; resize: vertical; }
+.sv-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+
+/* 감사 후 환류(실제 지적) 기록 */
+.chip.feedback-chip { background: #fde0e0; color: #c0392b; }
+.case-card.has-feedback { border-left: 4px solid #c0392b; }
+.fb-toggle.has-feedback { color: #c0392b; font-weight: 700; }
+.case-feedback { width: 100%; margin-top: 6px; border: 1px solid #e6b8b8; border-radius: 6px; padding: 6px 8px; font: inherit; resize: vertical; background: #fff8f8; }
+.dash-feedback { border-left: 4px solid #c0392b; }
+.todo-list .fb-redone { font-size: 11px; color: #1f6f3f; margin-left: 8px; font-weight: 700; }
+.todo-list .fb-todo { font-size: 11px; color: #c0392b; margin-left: 8px; font-weight: 700; }
 
 .app-footer {
   max-width: 1100px; margin: 20px auto; padding: 0 16px;
@@ -313,6 +348,14 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .print-freq td.num { text-align: right; }
   .print-freq .freq-grand td { background: #eee; font-weight: 700; }
   .hd-none { font-size: 11px; color: #888; margin: 2px 0 8px; }
+  .appx-kv th { width: 18%; }
+  .appx-charts { display: flex; gap: 24px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .appx-charts figure { margin: 0; text-align: center; }
+  .appx-charts figcaption { font-size: 10.5px; color: #555; margin-top: 2px; }
+  .appx-charts svg, .appx-spark svg { border: 1px solid #ccc; }
+  .appx-survey td.num, .appx-survey th.num { text-align: right; width: 28%; }
+  .appx-survey .appx-avg td { background: #eef2f8; font-weight: 700; }
+  .appx-comment { font-size: 11px; color: #444; margin: 4px 0 8px; }
 }
 
 @media (max-width: 800px) {

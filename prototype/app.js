@@ -10,6 +10,8 @@
   var LS_METRICS  = "gamsanavi.metrics.v1";   // 사용 효과 측정용
   var LS_ROLE     = "gamsanavi.role.v1";      // 담당 역할 필터
   var LS_MODE     = "gamsanavi.mode.v1";      // 점검 모드: core(핵심·자주) / all(전체)
+  var LS_SURVEY   = "gamsanavi.survey.v1";    // 사용자 설문 응답(연구 효과성)
+  var LS_FEEDBACK = "gamsanavi.feedback.v1";  // 감사 후 실제 지적 환류 기록
 
   function load(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -34,6 +36,8 @@
   var board    = load(LS_BOARD, []);
   var naCases  = load(LS_NA, {});
   var memos    = load(LS_MEMO, {});
+  var survey   = load(LS_SURVEY, { responses: {}, comment: "", submittedAt: null });
+  var feedback = load(LS_FEEDBACK, {}); // { caseId: { note: "실제 지적 내용", at: ISO } }
   var settings = load(LS_SETTINGS, { school: "", auditDate: "", auditType: "jonghap" });
   var metrics  = load(LS_METRICS, {
     firstActAt: null,   // 최초 점검 시각(ISO)
@@ -64,6 +68,24 @@
     if (t === "freq-hi") return "🔴";
     if (t === "freq-mid") return "🟠";
     return "★";
+  }
+  /* 사용자 설문(연구 효과성 검증) — 5점 척도(1 전혀 아니다 ~ 5 매우 그렇다) */
+  var SURVEY_QUESTIONS = [
+    { id: "q1", text: "감사 준비에 필요한 점검 항목을 빠르게 파악할 수 있었다." },
+    { id: "q2", text: "사례집을 직접 찾아보는 것보다 점검에 드는 시간이 줄었다." },
+    { id: "q3", text: "우선 점검해야 할(위험도 높은) 항목을 판단하는 데 도움이 되었다." },
+    { id: "q4", text: "수감자료 준비 현황을 관리하는 데 도움이 되었다." },
+    { id: "q5", text: "업무 분담과 인수인계에 도움이 되었다." },
+    { id: "q6", text: "감사 준비에 대한 부담(심리적·업무적)이 줄었다." },
+    { id: "q7", text: "다른 학교나 동료에게 이 도구를 추천할 의향이 있다." }
+  ];
+  var SURVEY_SCALE = ["전혀 아니다", "아니다", "보통", "그렇다", "매우 그렇다"];
+  function surveyStats() {
+    var vals = SURVEY_QUESTIONS.map(function (q) { return survey.responses[q.id]; })
+      .filter(function (v) { return typeof v === "number"; });
+    var sum = vals.reduce(function (s, v) { return s + v; }, 0);
+    return { answered: vals.length, total: SURVEY_QUESTIONS.length,
+      avg: vals.length ? (sum / vals.length) : 0, submitted: !!survey.submittedAt };
   }
   /* 복원된 역할에 맞춰 첫 활성 분야를 보이는 분야 중 하나로 맞춘다(아래 visibleCategories 사용) */
 
@@ -394,6 +416,24 @@
     document.querySelectorAll("#dash-todo li[data-goto]").forEach(function (el) {
       bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
+
+    // 지난 감사 지적 항목(환류) — 실제 지적 기록이 있는 사례를 우선 재점검 대상으로 표시
+    var fbCases = CASES.filter(function (c) { return feedback[c.id] && inScope(c.cat); });
+    var fbCard = $("#dash-feedback-card");
+    if (fbCases.length) {
+      fbCard.hidden = false;
+      $("#dash-feedback").innerHTML = fbCases.map(function (c) {
+        var doneMark = caseDone(c) ? '<span class="fb-redone">✔ 재점검 완료</span>' : '<span class="fb-todo">미점검</span>';
+        return '<li role="button" tabindex="0" data-goto="' + c.cat + '">📌 ' + esc(c.title) +
+          '<span class="todo-cat">' + esc(catById(c.cat).name) + "</span>" + doneMark + "</li>";
+      }).join("");
+      document.querySelectorAll("#dash-feedback li[data-goto]").forEach(function (el) {
+        bindActivate(el, function () { gotoCategory(el.dataset.goto); });
+      });
+    } else {
+      fbCard.hidden = true;
+      $("#dash-feedback").innerHTML = "";
+    }
   }
 
   /* ⑦ 감사 종류 드롭다운 구성 */
@@ -535,10 +575,12 @@
     list.forEach(function (c) {
       var isNA = !!naCases[c.id];
       var memo = memos[c.id] || "";
-      html += '<div class="case-card' + (isNA ? " is-na" : "") + '" id="card-' + c.id + '">' +
+      var fb = feedback[c.id];
+      html += '<div class="case-card' + (isNA ? " is-na" : "") + (fb ? " has-feedback" : "") + '" id="card-' + c.id + '">' +
         '<div class="case-head"><div><h3>' + esc(c.title) + "</h3>" +
         (c.verified === false ? '<span class="unverified">⚠ 원문 확인 전(예시)</span>' : "") +
         "</div><div class=\"head-chips\">" +
+        (fb ? '<span class="chip feedback-chip" title="지난 감사 실제 지적 — 우선 재점검">📌 지난 감사 지적</span>' : "") +
         ((c.freq || 0) >= 3 ? '<span class="chip freq ' + riskTierClass(c.freq) + '">' + riskBadge(c.freq) + ' 빈출' + (c.freq > 3 ? " ×" + c.freq : "") + "</span>" : "") +
         (c.disposition ? '<span class="chip">' + esc(c.disposition) + "</span>" : "") + "</div></div>" +
         (searchTerm ? '<div class="case-docs" style="margin:2px 0 6px">분야: ' + esc(catById(c.cat).name) + "</div>" : "") +
@@ -571,9 +613,12 @@
         '<div class="case-foot">' +
         '<button type="button" class="link-btn na-toggle" data-na="' + c.id + '">' + (isNA ? "↩ 점검 대상으로 되돌리기" : "해당없음(우리 학교 무관)") + "</button>" +
         '<button type="button" class="link-btn memo-toggle' + (memo ? " has-memo" : "") + '" data-memo="' + c.id + '">✎ 메모' + (memo ? " 있음" : "") + "</button>" +
+        '<button type="button" class="link-btn fb-toggle' + (fb ? " has-feedback" : "") + '" data-fb="' + c.id + '">📌 실제 지적 기록' + (fb ? " 있음" : "") + "</button>" +
         "</div>" +
         '<textarea class="case-memo" data-memo-input="' + c.id + '" placeholder="담당자 메모 (확인한 문서, 후임자에게 남길 말 등)" ' +
         (memo ? "" : "hidden ") + "rows=\"2\">" + esc(memo) + "</textarea>" +
+        '<textarea class="case-feedback" data-fb-input="' + c.id + '" placeholder="감사 종료 후, 이 항목에서 실제로 지적받은 내용을 기록하세요. 다음 감사 대비에 우선 재점검 항목으로 표시됩니다." ' +
+        (fb ? "" : "hidden ") + "rows=\"2\">" + esc(fb ? fb.note : "") + "</textarea>" +
         "</div>";
     });
     $("#case-area").innerHTML = html;
@@ -649,6 +694,41 @@
         var toggle = document.querySelector('[data-memo="' + id + '"]');
         toggle.classList.toggle("has-memo", !!val);
         toggle.textContent = val ? "✎ 메모 있음" : "✎ 메모";
+      });
+    });
+    document.querySelectorAll("#case-area .fb-toggle").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var ta = document.querySelector('[data-fb-input="' + el.dataset.fb + '"]');
+        ta.hidden = !ta.hidden;
+        if (!ta.hidden) ta.focus();
+      });
+    });
+    document.querySelectorAll("#case-area .case-feedback").forEach(function (ta) {
+      ta.addEventListener("input", function () {
+        var id = ta.dataset.fbInput;
+        var val = ta.value.trim();
+        var had = !!feedback[id];
+        if (val) feedback[id] = { note: val, at: feedback[id] ? feedback[id].at : new Date().toISOString() };
+        else delete feedback[id];
+        save(LS_FEEDBACK, feedback);
+        var card = document.getElementById("card-" + id);
+        if (card) {
+          card.classList.toggle("has-feedback", !!val);
+          var chips = card.querySelector(".head-chips");
+          var chip = chips ? chips.querySelector(".feedback-chip") : null;
+          if (val && !chip && chips) {
+            chip = document.createElement("span");
+            chip.className = "chip feedback-chip";
+            chip.title = "지난 감사 실제 지적 — 우선 재점검";
+            chip.textContent = "📌 지난 감사 지적";
+            chips.insertBefore(chip, chips.firstChild);
+          } else if (!val && chip) {
+            chip.remove();
+          }
+        }
+        var toggle = document.querySelector('[data-fb="' + id + '"]');
+        toggle.classList.toggle("has-feedback", !!val);
+        toggle.textContent = val ? "📌 실제 지적 기록 있음" : "📌 실제 지적 기록";
       });
     });
   }
@@ -828,9 +908,9 @@
 
   $("#backup-btn").addEventListener("click", function () {
     var payload = {
-      app: "gamsanavi", version: 3, exportedAt: new Date().toISOString(),
+      app: "gamsanavi", version: 4, exportedAt: new Date().toISOString(),
       settings: settings, checks: checks, board: board, na: naCases, memos: memos,
-      metrics: metrics
+      metrics: metrics, survey: survey, feedback: feedback
     };
     var name = "감사내비_백업_" + new Date().toISOString().slice(0, 10) + ".json";
     downloadFile(name, JSON.stringify(payload, null, 2), "application/json");
@@ -874,6 +954,31 @@
       snapshots: snaps
     };
   }
+  function sanitizeSurvey(s) {
+    var def = { responses: {}, comment: "", submittedAt: null };
+    if (!s || typeof s !== "object") return def;
+    var resp = {};
+    SURVEY_QUESTIONS.forEach(function (q) {
+      var v = s.responses && s.responses[q.id];
+      if (typeof v === "number" && v >= 1 && v <= 5) resp[q.id] = v;
+    });
+    return {
+      responses: resp,
+      comment: typeof s.comment === "string" ? s.comment : "",
+      submittedAt: typeof s.submittedAt === "string" ? s.submittedAt : null
+    };
+  }
+  function sanitizeFeedback(f) {
+    if (!f || typeof f !== "object" || Array.isArray(f)) return {};
+    var out = {};
+    Object.keys(f).forEach(function (k) {
+      var v = f[k];
+      if (v && typeof v === "object" && typeof v.note === "string" && v.note) {
+        out[k] = { note: v.note, at: typeof v.at === "string" ? v.at : new Date().toISOString() };
+      }
+    });
+    return out;
+  }
 
   $("#restore-btn").addEventListener("click", function () { $("#restore-file").click(); });
   $("#restore-file").addEventListener("change", function () {
@@ -895,8 +1000,11 @@
       memos    = sanitizeObject(payload.memos);
       settings = sanitizeSettings(payload.settings);
       metrics  = sanitizeMetrics(payload.metrics);
+      survey   = sanitizeSurvey(payload.survey);
+      feedback = sanitizeFeedback(payload.feedback);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
       save(LS_MEMO, memos); save(LS_SETTINGS, settings); save(LS_METRICS, metrics);
+      save(LS_SURVEY, survey); save(LS_FEEDBACK, feedback);
       $("#set-type").value = settings.auditType;
       var vis = visibleCategories();
       if (!vis.some(function (c) { return c.id === activeCat; })) activeCat = vis.length ? vis[0].id : CATEGORIES[0].id;
@@ -915,8 +1023,9 @@
     var inMemos   = sanitizeObject(payload.memos);
     var inBoard   = sanitizeBoard(payload.board);
     var inMetrics = sanitizeMetrics(payload.metrics);
+    var inFeedback = sanitizeFeedback(payload.feedback);
 
-    var addedChecks = 0, addedNA = 0, mergedMemos = 0, addedBoard = 0, advancedBoard = 0;
+    var addedChecks = 0, addedNA = 0, mergedMemos = 0, addedBoard = 0, advancedBoard = 0, addedFeedback = 0;
 
     Object.keys(inChecks).forEach(function (k) {
       if (inChecks[k] && !checks[k]) { checks[k] = true; addedChecks++; }
@@ -960,7 +1069,13 @@
     metrics.snapshots = (metrics.snapshots || []).concat(inMetrics.snapshots || [])
       .sort(function (a, b) { return a.at < b.at ? -1 : (a.at > b.at ? 1 : 0); });
 
-    return { addedChecks: addedChecks, addedNA: addedNA, mergedMemos: mergedMemos, addedBoard: addedBoard, advancedBoard: advancedBoard };
+    // 감사 후 환류 기록: 현재에 없는 항목만 추가(기존 기록은 보존)
+    Object.keys(inFeedback).forEach(function (k) {
+      if (!feedback[k]) { feedback[k] = inFeedback[k]; addedFeedback++; }
+    });
+
+    return { addedChecks: addedChecks, addedNA: addedNA, mergedMemos: mergedMemos,
+      addedBoard: addedBoard, advancedBoard: advancedBoard, addedFeedback: addedFeedback };
   }
 
   $("#merge-btn").addEventListener("click", function () { $("#merge-file").click(); });
@@ -979,11 +1094,11 @@
       if (!confirm("선택한 백업 파일의 점검 결과를 현재 데이터에 합칠까요?\n(기존 데이터는 덮어쓰지 않고, 새 내용만 추가·병합됩니다)\n내보낸 시점: " + (payload.exportedAt || "알 수 없음"))) return;
       var r = mergeData(payload);
       save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
-      save(LS_MEMO, memos); save(LS_METRICS, metrics);
+      save(LS_MEMO, memos); save(LS_METRICS, metrics); save(LS_FEEDBACK, feedback);
       renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
       alert("취합이 완료되었습니다.\n" +
         "새로 점검됨: " + r.addedChecks + "문항 · 새 해당없음: " + r.addedNA + "건 · 메모 병합: " + r.mergedMemos + "건\n" +
-        "수감자료 추가: " + r.addedBoard + "건 · 상태 진행: " + r.advancedBoard + "건");
+        "수감자료 추가: " + r.addedBoard + "건 · 상태 진행: " + r.advancedBoard + "건 · 지난 지적 병합: " + r.addedFeedback + "건");
     };
     reader.readAsText(file, "utf-8");
   });
@@ -1055,6 +1170,27 @@
       '<circle cx="' + pts[pts.length - 1].split(",")[0] + '" cy="' + pts[pts.length - 1].split(",")[1] +
       '" r="3" fill="#1f6f3f"/></svg>';
   }
+  /* 준비도 전·후 막대그래프(SVG) — 보고서 부록·효과 카드용 */
+  function beforeAfterSVG(startPct, nowPct, w, h) {
+    w = w || 220; h = h || 120;
+    var pad = 26, bw = 54, gap = 60;
+    var x0 = (w - (bw * 2 + gap)) / 2;
+    var maxH = h - pad - 18;
+    function bar(x, pct, color, label) {
+      var bh = Math.max(2, Math.round(maxH * pct / 100));
+      var y = h - pad - bh;
+      return '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + bh + '" fill="' + color + '" rx="3"/>' +
+        '<text x="' + (x + bw / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#1f3a5f">' + pct + '%</text>' +
+        '<text x="' + (x + bw / 2) + '" y="' + (h - pad + 14) + '" text-anchor="middle" font-size="11" fill="#667">' + label + '</text>';
+    }
+    return '<svg class="ba-chart" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h +
+      '" role="img" aria-label="준비도 전후 비교">' +
+      '<line x1="' + (x0 - 8) + '" y1="' + (h - pad) + '" x2="' + (w - x0 + 8) + '" y2="' + (h - pad) + '" stroke="#cdd5e0"/>' +
+      bar(x0, startPct, "#b9c4d6", "점검 시작") +
+      bar(x0 + bw + gap, nowPct, "#1f6f3f", "현재") +
+      '</svg>';
+  }
+
   function effectCardHTML() {
     var e = effectSummary();
     var html = '<div class="status-card effect-card"><h4>사용 효과 측정 <span class="muted">— 연구 효과성 검증용</span></h4>';
@@ -1070,9 +1206,79 @@
       '<div class="effect-stat"><span class="es-num">' + e.startPct + '<small>%</small> → ' + e.nowPct + '<small>%</small></span>' +
       '<span class="es-lbl">준비도 변화 ' + (gain >= 0 ? "▲" + gain : "▼" + (-gain)) + 'p</span></div>' +
       "</div>";
-    var spark = sparklineSVG(e.snapshots, 320, 56);
+    html += '<div class="effect-charts">' + beforeAfterSVG(e.startPct, e.nowPct, 220, 120);
+    var spark = sparklineSVG(e.snapshots, 300, 100);
     if (spark) html += '<div class="spark-wrap">' + spark + '<div class="spark-axis"><span>점검 시작</span><span>현재</span></div></div>';
+    html += "</div>";
     html += '<button type="button" class="link-btn" id="metrics-reset">측정 기록 초기화</button>';
+    html += "</div>";
+    return html;
+  }
+
+  /* 부서·담당 역할별 점검 현황 — 분담→취합 결과를 역할 단위로 집계(협업 대시보드) */
+  function roleProgressRows() {
+    var scopeIds = {};
+    scopeCats().forEach(function (c) { scopeIds[c.id] = true; });
+    return ROLES.map(function (r) {
+      var cats = r.cats.filter(function (id) { return scopeIds[id]; });
+      var total = 0, done = 0;
+      cats.forEach(function (id) { var p = catProgress(id); total += p.total; done += p.done; });
+      return { role: r, cats: cats, total: total, done: done,
+        pct: total ? Math.round(done / total * 100) : 100 };
+    }).filter(function (r) { return r.cats.length; });
+  }
+  function roleProgressCardHTML() {
+    var rows = roleProgressRows();
+    var html = '<div class="status-card status-wide"><h4>부서·담당 역할별 점검 현황 ' +
+      '<span class="muted">— 분담·취합 결과를 역할 단위로 집계 · 진행 낮은 순</span></h4>';
+    if (!rows.length || rows.every(function (r) { return r.total === 0; })) {
+      html += '<p class="empty">점검 대상 분야가 없습니다.</p></div>';
+      return html;
+    }
+    rows.sort(function (a, b) { return a.pct - b.pct; });
+    html += '<table class="role-prog-table"><tbody>';
+    rows.forEach(function (r) {
+      var catLinks = r.cats.map(function (id) {
+        return '<span class="rp-cat" role="button" tabindex="0" data-goto="' + id + '">' + esc(catById(id).name) + "</span>";
+      }).join("");
+      html += '<tr class="role-prog-row"><td class="rp-name">' + esc(r.role.name) +
+        '<div class="rp-cats">' + catLinks + "</div></td>" +
+        '<td class="rp-bar">' + progressBarHTML(r.pct) + "</td>" +
+        '<td class="rp-num">' + r.done + "/" + r.total + "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+    return html;
+  }
+
+  /* 사용자 설문 카드(연구 효과성) — 5점 척도 응답 입력·저장 */
+  function surveyCardHTML() {
+    var s = surveyStats();
+    var html = '<div class="status-card status-wide survey-card"><h4>사용 만족도 설문 ' +
+      '<span class="muted">— 연구 효과성 검증 (5점 척도)</span></h4>';
+    if (s.submitted) {
+      html += '<p class="survey-done">✔ 제출 완료 (' + new Date(survey.submittedAt).toLocaleDateString("ko-KR") +
+        ') · 평균 <b>' + s.avg.toFixed(2) + '</b> / 5.0 점</p>';
+    } else {
+      html += '<p class="hint">감사 준비에 도구를 사용한 교직원이 응답하면, 평균 점수가 연구 효과 부록에 반영됩니다.</p>';
+    }
+    html += '<table class="survey-table"><tbody>';
+    SURVEY_QUESTIONS.forEach(function (q) {
+      var val = survey.responses[q.id];
+      html += '<tr><td class="sv-q">' + esc(q.text) + '</td><td class="sv-opts">';
+      for (var n = 1; n <= 5; n++) {
+        html += '<label class="sv-opt" title="' + SURVEY_SCALE[n - 1] + '">' +
+          '<input type="radio" name="sv-' + q.id + '" value="' + n + '"' + (val === n ? " checked" : "") + ">" +
+          '<span>' + n + "</span></label>";
+      }
+      html += "</td></tr>";
+    });
+    html += '</tbody></table>';
+    html += '<div class="sv-scale-legend">1 전혀 아니다 · 2 아니다 · 3 보통 · 4 그렇다 · 5 매우 그렇다</div>';
+    html += '<label class="sv-comment-label">자유 의견 (선택)' +
+      '<textarea id="sv-comment" rows="2" placeholder="개선 의견, 도움이 된 점 등">' + esc(survey.comment || "") + '</textarea></label>';
+    html += '<div class="sv-actions"><button type="button" class="btn primary" id="sv-submit">설문 제출' +
+      (s.submitted ? " (다시 저장)" : "") + '</button>' +
+      (s.submitted ? '<button type="button" class="link-btn" id="sv-reset">설문 초기화</button>' : "") + "</div>";
     html += "</div>";
     return html;
   }
@@ -1082,6 +1288,12 @@
 
     // ② 사용 효과 측정 (가장 위 — 연구 효과성 지표)
     html += effectCardHTML();
+
+    // ②-2 부서·담당 역할별 점검 현황 (협업 대시보드)
+    html += roleProgressCardHTML();
+
+    // ②-3 사용 만족도 설문 (연구 효과성)
+    html += surveyCardHTML();
 
     // 분야별 사례 분포 (데이터 분석 관점)
     var counts = CATEGORIES.map(function (cat) {
@@ -1186,11 +1398,44 @@
     document.querySelectorAll("#status-area .risk-list [data-goto]").forEach(function (el) {
       bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
+    document.querySelectorAll("#status-area .role-prog-row [data-goto]").forEach(function (el) {
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
+    });
     var mr = document.getElementById("metrics-reset");
     if (mr) mr.addEventListener("click", function () {
       if (!confirm("사용 효과 측정 기록(점검 시간·준비도 추이)을 초기화할까요?\n점검 체크 내용은 그대로 유지됩니다.")) return;
       metrics = { firstActAt: null, lastActAt: null, activeMs: 0, startPct: null, snapshots: [] };
       save(LS_METRICS, metrics);
+      renderStats();
+    });
+
+    // 설문 응답 입력
+    document.querySelectorAll('#status-area input[type="radio"][name^="sv-"]').forEach(function (rb) {
+      rb.addEventListener("change", function () {
+        var qid = rb.name.slice(3);
+        survey.responses[qid] = +rb.value;
+        save(LS_SURVEY, survey);
+      });
+    });
+    var svc = document.getElementById("sv-comment");
+    if (svc) svc.addEventListener("input", function () {
+      survey.comment = svc.value;
+      save(LS_SURVEY, survey);
+    });
+    var svSub = document.getElementById("sv-submit");
+    if (svSub) svSub.addEventListener("click", function () {
+      var s = surveyStats();
+      if (s.answered < s.total && !confirm("아직 응답하지 않은 문항이 " + (s.total - s.answered) + "개 있습니다.\n그대로 제출할까요?")) return;
+      survey.submittedAt = new Date().toISOString();
+      save(LS_SURVEY, survey);
+      renderStats();
+      alert("설문이 제출되었습니다. 평균 " + s.avg.toFixed(2) + "점이 연구 효과 부록에 반영됩니다.");
+    });
+    var svRes = document.getElementById("sv-reset");
+    if (svRes) svRes.addEventListener("click", function () {
+      if (!confirm("설문 응답을 모두 지울까요?")) return;
+      survey = { responses: {}, comment: "", submittedAt: null };
+      save(LS_SURVEY, survey);
       renderStats();
     });
   }
@@ -1372,6 +1617,70 @@
       html += "</tbody></table>";
     } else {
       html += '<p class="hd-none">빈출 사례 점검을 모두 마쳤습니다.</p>';
+    }
+
+    // 6) 지난 감사 실제 지적사항(환류) — 다음 감사 대비 우선 재점검
+    var fbList = CASES.filter(function (c) { return feedback[c.id] && inScope(c.cat); });
+    html += "<h2>6. 지난 감사 실제 지적사항 (" + fbList.length + "건) — 다음 감사 대비 우선 재점검</h2>";
+    if (fbList.length) {
+      html += "<table><thead><tr><th style=\"width:24%\">분야</th><th style=\"width:28%\">사례</th><th>실제 지적 내용</th></tr></thead><tbody>";
+      fbList.forEach(function (c) {
+        html += "<tr><td>" + esc(catById(c.cat).name) + "</td><td>" + esc(c.title) +
+          '</td><td class="print-memo">' + esc(feedback[c.id].note) + "</td></tr>";
+      });
+      html += "</tbody></table>";
+    } else {
+      html += '<p class="hd-none">기록된 지난 감사 지적사항이 없습니다. 감사 종료 후 각 사례의 [📌 실제 지적 기록]에 입력하면 다음 대비에 반영됩니다.</p>';
+    }
+
+    $("#print-area").innerHTML = html;
+    window.print();
+  });
+
+  /* ───────── 연구 효과 부록 보고서 (효과 측정 + 설문) ───────── */
+  $("#appendix-report").addEventListener("click", function () {
+    var today = new Date();
+    var dateStr = today.getFullYear() + ". " + (today.getMonth() + 1) + ". " + today.getDate() + ".";
+    var e = effectSummary();
+    var s = surveyStats();
+    var html = "<h1>「감사내비」 사용 효과 부록</h1>" +
+      '<p class="print-meta">' + esc(settings.school || "(학교명 미입력)") +
+      (settings.auditDate ? " · 감사 예정일 " + esc(settings.auditDate) : "") +
+      " · 작성일 " + dateStr + " · 기준: " + esc(DATA_META.region) + "</p>";
+
+    html += "<h2>1. 사용 효과 측정 (도구 자동 기록)</h2>";
+    if (e.hasData) {
+      var gain = e.nowPct - e.startPct;
+      html += '<table class="appx-kv"><tbody>' +
+        "<tr><th>점검 시작일</th><td>" + new Date(e.firstActAt).toLocaleDateString("ko-KR") + "</td>" +
+        "<th>점검 진행 일수</th><td>" + e.days + "일</td></tr>" +
+        "<tr><th>누적 점검 시간</th><td>" + e.activeStr + "</td>" +
+        "<th>준비도 변화</th><td>" + e.startPct + "% → " + e.nowPct + "% (" +
+        (gain >= 0 ? "+" + gain : gain) + "p)</td></tr></tbody></table>";
+      html += '<div class="appx-charts">' +
+        '<figure>' + beforeAfterSVG(e.startPct, e.nowPct, 240, 150) + "<figcaption>준비도 전·후 비교</figcaption></figure>";
+      var spark = sparklineSVG(e.snapshots, 360, 130);
+      if (spark) html += '<figure><div class="appx-spark">' + spark + "</div><figcaption>준비도 변화 추이</figcaption></figure>";
+      html += "</div>";
+    } else {
+      html += '<p class="hd-none">아직 점검 기록이 없습니다. 점검을 진행하면 측정값이 채워집니다.</p>';
+    }
+
+    html += "<h2>2. 사용 만족도 설문 결과 (5점 척도)</h2>";
+    if (s.answered) {
+      html += '<table class="appx-survey"><thead><tr><th>문항</th><th class="num">응답</th></tr></thead><tbody>';
+      SURVEY_QUESTIONS.forEach(function (q) {
+        var v = survey.responses[q.id];
+        html += "<tr><td>" + esc(q.text) + '</td><td class="num">' +
+          (typeof v === "number" ? v + " (" + SURVEY_SCALE[v - 1] + ")" : "-") + "</td></tr>";
+      });
+      html += '<tr class="appx-avg"><td>전체 평균 (응답 ' + s.answered + "/" + s.total + "문항)</td>" +
+        '<td class="num">' + s.avg.toFixed(2) + " / 5.0</td></tr>";
+      html += "</tbody></table>";
+      if (survey.comment) html += '<p class="appx-comment"><b>자유 의견:</b> ' + esc(survey.comment) + "</p>";
+      if (!s.submitted) html += '<p class="hd-none">※ 아직 제출 전 상태의 응답입니다.</p>';
+    } else {
+      html += '<p class="hd-none">설문 응답이 없습니다. [통계·보고서]의 사용 만족도 설문을 작성하세요.</p>';
     }
 
     $("#print-area").innerHTML = html;

@@ -51,6 +51,10 @@
         <div id="dash-score" class="score-big">0%</div>
         <div id="dash-score-detail" class="score-detail"></div>
       </div>
+      <div class="dash-card dash-wide dash-feedback" id="dash-feedback-card" hidden>
+        <h4>📌 지난 감사 지적 항목 <span class="muted">— 실제 지적받은 항목, 우선 재점검</span></h4>
+        <ul id="dash-feedback" class="todo-list"></ul>
+      </div>
       <div class="dash-card dash-wide">
         <h4>분야별 점검 현황 <span class="muted">— 미점검이 많은 분야부터 표시됩니다</span></h4>
         <div id="dash-cats"></div>
@@ -124,6 +128,7 @@
     <div class="status-actions no-print">
       <button id="print-report" class="btn primary">📄 점검 결과 보고서 인쇄 / PDF</button>
       <button id="handover-report" class="btn">🔁 인수인계 보고서</button>
+      <button id="appendix-report" class="btn">📊 연구 효과 부록</button>
       <button id="check-csv" class="btn">점검 결과 CSV</button>
       <button id="backup-btn" class="btn">💾 백업 파일 저장</button>
       <button id="restore-btn" class="btn">📂 백업 불러오기</button>
