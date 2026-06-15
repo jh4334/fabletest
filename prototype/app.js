@@ -50,6 +50,21 @@
   try { checkMode = localStorage.getItem(LS_MODE) || "all"; } catch (e) { /* 무시 */ }
   /* 점검 모드: 핵심(자주 지적되는 빈출 ★ 사례만) / 전체 */
   function caseInMode(c) { return checkMode === "all" || (c.freq || 0) >= 3; }
+  /* 위험도 등급: 사례집 수록 지적사례 건수(freq)가 많을수록 우선 점검 대상.
+     10건 이상(최다 지적) / 5건 이상(다수 지적) / 3건 이상(빈출) */
+  function riskTierClass(freq) {
+    freq = freq || 0;
+    if (freq >= 10) return "freq-hi";
+    if (freq >= 5) return "freq-mid";
+    if (freq >= 3) return "";
+    return null;
+  }
+  function riskBadge(freq) {
+    var t = riskTierClass(freq);
+    if (t === "freq-hi") return "🔴";
+    if (t === "freq-mid") return "🟠";
+    return "★";
+  }
   /* 복원된 역할에 맞춰 첫 활성 분야를 보이는 분야 중 하나로 맞춘다(아래 visibleCategories 사용) */
 
   /* ───────── 사용 효과 측정 (연구 효과성 검증용) ───────── */
@@ -366,13 +381,13 @@
       bindActivate(el, function () { gotoCategory(el.dataset.goto); });
     });
 
-    // 추천 점검: 현재 감사 종류 범위 내 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것
+    // 추천 점검: 현재 감사 종류 범위 내 빈출(freq>=3) 사례 중 미완료·해당없음 아닌 것 — 지적 빈도(위험도) 높은 순
     var todos = CASES.filter(function (c) {
       return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c);
-    }).slice(0, 6);
+    }).sort(function (a, b) { return (b.freq || 0) - (a.freq || 0); }).slice(0, 6);
     $("#dash-todo").innerHTML = todos.length
       ? todos.map(function (c) {
-          return '<li role="button" tabindex="0" data-goto="' + c.cat + '">★ ' + esc(c.title) +
+          return '<li role="button" tabindex="0" data-goto="' + c.cat + '">' + riskBadge(c.freq) + " " + esc(c.title) +
             '<span class="todo-cat">' + esc(catById(c.cat).name) + "</span></li>";
         }).join("")
       : '<li class="all-done">✔ 빈출 사례 점검을 모두 마쳤습니다. 분야별 점검을 이어가세요.</li>';
@@ -489,6 +504,10 @@
       : CASES.filter(function (c) { return c.cat === activeCat; });
     // 점검 모드(핵심/전체) 적용
     var list = fullList.filter(caseInMode);
+    // 핵심 모드는 위험도(지적 빈도) 높은 사례부터 점검하도록 정렬
+    if (checkMode === "core" && !searchTerm) {
+      list = list.slice().sort(function (a, b) { return (b.freq || 0) - (a.freq || 0); });
+    }
 
     if (!list.length) {
       // 핵심 모드라 빈출 사례가 없어 비었으면 전체 보기로 전환을 안내
@@ -503,6 +522,9 @@
       return;
     }
     var html = "";
+    // 사례의 "필요 자료"(docs)를 수감자료 보드 항목과 이름으로 매칭 — 진행 상태 표시·보드에 추가용
+    var boardIdx = {};
+    board.forEach(function (item, idx) { boardIdx[item.name] = idx; });
     // 분야 전체가 우리 학교와 무관할 때(예: 공립학교의 사학분야) 한 번에 제외 — 모드와 무관하게 전체 사례 대상
     if (!searchTerm) {
       var allNA = fullList.every(function (c) { return naCases[c.id]; });
@@ -517,7 +539,7 @@
         '<div class="case-head"><div><h3>' + esc(c.title) + "</h3>" +
         (c.verified === false ? '<span class="unverified">⚠ 원문 확인 전(예시)</span>' : "") +
         "</div><div class=\"head-chips\">" +
-        ((c.freq || 0) >= 3 ? '<span class="chip freq">★ 빈출' + (c.freq > 3 ? " ×" + c.freq : "") + "</span>" : "") +
+        ((c.freq || 0) >= 3 ? '<span class="chip freq ' + riskTierClass(c.freq) + '">' + riskBadge(c.freq) + ' 빈출' + (c.freq > 3 ? " ×" + c.freq : "") + "</span>" : "") +
         (c.disposition ? '<span class="chip">' + esc(c.disposition) + "</span>" : "") + "</div></div>" +
         (searchTerm ? '<div class="case-docs" style="margin:2px 0 6px">분야: ' + esc(catById(c.cat).name) + "</div>" : "") +
         '<p class="case-detail">' + esc(c.detail) + "</p>" +
@@ -534,7 +556,18 @@
           (on ? " checked" : "") + (isNA ? " disabled" : "") + "><span>" + esc(q) + "</span></label>";
       });
       html += "</div>" +
-        '<div class="case-docs">' + esc(c.docs.join(", ")) + "</div>" +
+        (c.docs && c.docs.length ?
+          '<div class="case-docs"><span class="docs-label">필요 자료</span>' +
+          c.docs.map(function (d, di) {
+            var idx = boardIdx[d];
+            if (idx !== undefined) {
+              var st = board[idx].status;
+              return '<span class="doc-chip st-' + st + '" data-doc-jump="' + idx + '" title="수감자료 보드에서 보기">' +
+                esc(d) + ' <b>' + esc(st) + "</b></span>";
+            }
+            return '<span class="doc-chip doc-missing">' + esc(d) +
+              '<button type="button" class="doc-add-btn" data-doc-add="' + c.id + ":" + di + '">+ 보드에 추가</button></span>';
+          }).join("") + "</div>" : "") +
         '<div class="case-foot">' +
         '<button type="button" class="link-btn na-toggle" data-na="' + c.id + '">' + (isNA ? "↩ 점검 대상으로 되돌리기" : "해당없음(우리 학교 무관)") + "</button>" +
         '<button type="button" class="link-btn memo-toggle' + (memo ? " has-memo" : "") + '" data-memo="' + c.id + '">✎ 메모' + (memo ? " 있음" : "") + "</button>" +
@@ -545,6 +578,26 @@
     });
     $("#case-area").innerHTML = html;
 
+    document.querySelectorAll("#case-area .doc-add-btn").forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var parts = btn.dataset.docAdd.split(":");
+        var c = CASES.filter(function (x) { return x.id === parts[0]; })[0];
+        var doc = c.docs[+parts[1]];
+        if (board.some(function (item) { return item.name === doc; })) return;
+        board.push({ name: doc, dept: "", owner: "", status: "미시작" });
+        save(LS_BOARD, board);
+        recordActivity();
+        renderBoard(); renderCases(); renderDash(); renderStats();
+      });
+    });
+    document.querySelectorAll("#case-area .doc-chip[data-doc-jump]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        switchTab("board");
+        $("#board-search").value = board[+el.dataset.docJump].name;
+        renderBoard();
+      });
+    });
     document.querySelectorAll('#case-area input[type="checkbox"]').forEach(function (box) {
       box.addEventListener("change", function () {
         if (box.checked) checks[box.dataset.key] = true;
@@ -853,6 +906,88 @@
     reader.readAsText(file, "utf-8");
   });
 
+  /* 부서별로 나눠 점검한 백업 파일을 현재 데이터에 합친다(덮어쓰지 않음).
+     체크·해당없음은 합집합, 메모는 다르면 이어붙이고, 수감자료는 이름으로 매칭해
+     없으면 추가하고 있으면 더 진행된 상태·빈 항목을 채운다. */
+  function mergeData(payload) {
+    var inChecks  = sanitizeObject(payload.checks);
+    var inNA      = sanitizeObject(payload.na);
+    var inMemos   = sanitizeObject(payload.memos);
+    var inBoard   = sanitizeBoard(payload.board);
+    var inMetrics = sanitizeMetrics(payload.metrics);
+
+    var addedChecks = 0, addedNA = 0, mergedMemos = 0, addedBoard = 0, advancedBoard = 0;
+
+    Object.keys(inChecks).forEach(function (k) {
+      if (inChecks[k] && !checks[k]) { checks[k] = true; addedChecks++; }
+    });
+    Object.keys(inNA).forEach(function (k) {
+      if (inNA[k] && !naCases[k]) { naCases[k] = true; addedNA++; }
+    });
+    Object.keys(inMemos).forEach(function (k) {
+      var cur = memos[k] || "", inc = inMemos[k] || "";
+      if (!inc) return;
+      if (!cur) { memos[k] = inc; mergedMemos++; }
+      else if (cur.indexOf(inc) === -1) { memos[k] = cur + "\n---\n" + inc; mergedMemos++; }
+    });
+
+    var STATUS_RANK = { "미시작": 0, "진행중": 1, "준비완료": 2, "해당없음": 2 };
+    var byName = {};
+    board.forEach(function (item, idx) { byName[item.name] = idx; });
+    inBoard.forEach(function (item) {
+      var idx = byName[item.name];
+      if (idx === undefined) {
+        board.push(item);
+        byName[item.name] = board.length - 1;
+        addedBoard++;
+      } else {
+        var cur = board[idx];
+        if (!cur.dept && item.dept) cur.dept = item.dept;
+        if (!cur.owner && item.owner) cur.owner = item.owner;
+        if ((STATUS_RANK[item.status] || 0) > (STATUS_RANK[cur.status] || 0)) {
+          cur.status = item.status;
+          advancedBoard++;
+        }
+      }
+    });
+
+    // 사용 효과 측정: 더 이른 시작 시각·시작 준비도를 채택, 점검 시간은 합산, 추이는 시간순으로 병합
+    if (inMetrics.firstActAt && (!metrics.firstActAt || inMetrics.firstActAt < metrics.firstActAt)) {
+      metrics.firstActAt = inMetrics.firstActAt;
+      if (inMetrics.startPct != null) metrics.startPct = inMetrics.startPct;
+    }
+    metrics.activeMs = (metrics.activeMs || 0) + (inMetrics.activeMs || 0);
+    metrics.snapshots = (metrics.snapshots || []).concat(inMetrics.snapshots || [])
+      .sort(function (a, b) { return a.at < b.at ? -1 : (a.at > b.at ? 1 : 0); });
+
+    return { addedChecks: addedChecks, addedNA: addedNA, mergedMemos: mergedMemos, addedBoard: addedBoard, advancedBoard: advancedBoard };
+  }
+
+  $("#merge-btn").addEventListener("click", function () { $("#merge-file").click(); });
+  $("#merge-file").addEventListener("change", function () {
+    var file = this.files[0];
+    this.value = "";
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var payload;
+      try { payload = JSON.parse(reader.result); } catch (e) { payload = null; }
+      if (!payload || payload.app !== "gamsanavi") {
+        alert("감사내비 백업 파일이 아닙니다.");
+        return;
+      }
+      if (!confirm("선택한 백업 파일의 점검 결과를 현재 데이터에 합칠까요?\n(기존 데이터는 덮어쓰지 않고, 새 내용만 추가·병합됩니다)\n내보낸 시점: " + (payload.exportedAt || "알 수 없음"))) return;
+      var r = mergeData(payload);
+      save(LS_CHECKS, checks); save(LS_BOARD, board); save(LS_NA, naCases);
+      save(LS_MEMO, memos); save(LS_METRICS, metrics);
+      renderCats(); renderCases(); renderBoard(); renderDash(); renderStats();
+      alert("취합이 완료되었습니다.\n" +
+        "새로 점검됨: " + r.addedChecks + "문항 · 새 해당없음: " + r.addedNA + "건 · 메모 병합: " + r.mergedMemos + "건\n" +
+        "수감자료 추가: " + r.addedBoard + "건 · 상태 진행: " + r.advancedBoard + "건");
+    };
+    reader.readAsText(file, "utf-8");
+  });
+
   /* ───────── 탭3: 통계·보고서 ───────── */
   /* data.js의 사례에 dispoGroup 필드가 있으면 그것을 쓰고,
      없으면 처분 문구의 키워드로 분류한다(실데이터 입력 시 dispoGroup 권장) */
@@ -994,6 +1129,23 @@
     });
     html += "</div>";
 
+    // 위험도(지적 빈도) 상위 미점검 사례 TOP — 현재 감사 종류 범위, 위험도 높은 순
+    var riskTop = CASES.filter(function (c) {
+      return inScope(c.cat) && (c.freq || 0) >= 3 && !naCases[c.id] && !caseDone(c);
+    }).sort(function (a, b) { return (b.freq || 0) - (a.freq || 0); }).slice(0, 10);
+    html += '<div class="status-card status-wide"><h4>위험도(지적 빈도) 상위 미점검 사례 ' +
+      '<span class="muted">— 빈도 높은 순 · 우선 점검 권장</span></h4>';
+    html += riskTop.length
+      ? '<ul class="risk-list">' + riskTop.map(function (c, i) {
+          return '<li role="button" tabindex="0" data-goto="' + c.cat + '">' +
+            '<span class="risk-rank">' + (i + 1) + "." + "</span>" +
+            '<span class="risk-title">' + riskBadge(c.freq) + " " + esc(c.title) +
+            '<span class="todo-cat">' + esc(catById(c.cat).name) + "</span></span>" +
+            '<span class="risk-freq">' + c.freq + "건</span></li>";
+        }).join("") + "</ul>"
+      : '<p class="empty">위험도 상위 사례 점검을 모두 마쳤습니다.</p>';
+    html += "</div>";
+
     // 수감자료 현황
     var bp = boardProgress();
     html += '<div class="status-card"><h4>수감자료 준비 현황</h4>';
@@ -1031,6 +1183,9 @@
     html += "</div>";
     $("#status-area").innerHTML = html;
 
+    document.querySelectorAll("#status-area .risk-list [data-goto]").forEach(function (el) {
+      bindActivate(el, function () { gotoCategory(el.dataset.goto); });
+    });
     var mr = document.getElementById("metrics-reset");
     if (mr) mr.addEventListener("click", function () {
       if (!confirm("사용 효과 측정 기록(점검 시간·준비도 추이)을 초기화할까요?\n점검 체크 내용은 그대로 유지됩니다.")) return;

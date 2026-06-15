@@ -128,9 +128,12 @@
       <button id="backup-btn" class="btn">💾 백업 파일 저장</button>
       <button id="restore-btn" class="btn">📂 백업 불러오기</button>
       <input type="file" id="restore-file" accept=".json" hidden>
+      <button id="merge-btn" class="btn">🔀 분담 결과 취합</button>
+      <input type="file" id="merge-file" accept=".json" hidden>
       <button id="reset-checks" class="btn danger">점검 초기화</button>
     </div>
-    <p class="hint no-print">백업 파일(JSON)로 다른 PC·다른 담당자에게 점검 상태를 그대로 넘길 수 있습니다(인수인계).</p>
+    <p class="hint no-print">백업 파일(JSON)로 다른 PC·다른 담당자에게 점검 상태를 그대로 넘길 수 있습니다(인수인계).<br>
+    <b>[분담 결과 취합]</b>은 덮어쓰지 않고, 부서별로 나눠 점검한 여러 백업 파일의 점검·메모·수감자료 결과를 하나로 합칩니다.</p>
     <div id="status-area"></div>
   </section>
 </main>
